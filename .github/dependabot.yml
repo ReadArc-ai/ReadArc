@@ -1,9 +1,13 @@
 version: 2
 updates:
+  # 大版本升级（TypeScript、Vite、pdf.js 等）要改代码、验版面，手动做；这里只收小版本和补丁
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       npm-runtime:
         dependency-type: production
@@ -12,4 +16,4 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
