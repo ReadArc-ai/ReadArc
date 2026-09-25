@@ -55,13 +55,13 @@
 
 ## 两种获得方式
 
-### Mac App Store · ¥18
+### Mac App Store
 
 适合希望开箱即用的用户：由 Apple 完成安装与自动更新，无需准备开发环境。一次购买也直接支持 ReadArc 的长期维护。
 
 **[在 Mac App Store 获取 ReadArc →](https://apps.apple.com/cn/app/readarc/id6803315888?mt=12)**
 
-现已上架，一次购买。中国区售价 ¥18，其他地区以 App Store 显示为准。
+现已上架，一次购买。
 
 ### 从源码构建 · 免费
 

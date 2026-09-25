@@ -55,13 +55,13 @@ Most reference tools are good at collecting. ReadArc is about understanding. Onc
 
 ## Two ways to get it
 
-### Mac App Store · CNY 18
+### Mac App Store
 
 For people who want it to just work: Apple handles installation and automatic updates, no development setup needed. A single purchase also supports long-term maintenance of ReadArc.
 
 **[Get ReadArc on the Mac App Store →](https://apps.apple.com/cn/app/readarc/id6803315888?mt=12&l=en-GB)**
 
-Available now as a one-time purchase. CNY 18 on the China storefront; local pricing is shown in the App Store. The link opens the China storefront in English.
+Available now as a one-time purchase. The link opens the China storefront in English.
 
 ### Build from source · free
 
