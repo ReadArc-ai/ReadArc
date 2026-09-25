@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <!-- application-identifier / team-identifier / application-groups 由签名工具自动补。
+         描述文件也必须授权 Electron 的 TEAM_ID.bundle_id App Group；
+         自动补签名权限不代表 Apple 描述文件已经授权，见 local/scripts/verify-mas.py。 -->
+    <!-- App Sandbox（MAS 必需）。文件访问策略：外部 PDF 在导入时拷贝进容器，
+         之后只读容器内副本——无需 security-scoped bookmark -->
+    <key>com.apple.security.app-sandbox</key><true/>
+    <!-- 模型 API / arXiv 检索 / 本地 Ollama 都是出站连接 -->
+    <key>com.apple.security.network.client</key><true/>
+    <!-- 打开对话框 / 拖入选择 PDF -->
+    <key>com.apple.security.files.user-selected.read-only</key><true/>
+  </dict>
+</plist>

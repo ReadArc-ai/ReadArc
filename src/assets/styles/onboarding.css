@@ -1,0 +1,185 @@
+/* 首次启动引导 */
+
+/* ---- 首次启动引导（块级滚动容器） ---- */
+.onboard-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.onboard-content {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 48px 28px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.onboard-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.onboard-mark svg {
+  width: 25px;
+  height: 25px;
+  color: var(--brand-teal-lift);
+}
+
+body[data-theme='light'] .onboard-mark svg {
+  color: var(--brand-teal);
+}
+
+.onboard-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.onboard-title {
+  font-size: 23px;
+  line-height: 1.35;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.onboard-sub {
+  font-size: 13px;
+  color: var(--fg2);
+  line-height: 1.7;
+}
+
+.onboard-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.onboard-step {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  background: var(--bg1);
+  border: 1px solid var(--line2);
+  border-radius: var(--r-lg);
+}
+
+.onboard-step--active {
+  background: var(--acc-soft);
+  border-color: var(--acc);
+}
+
+.onboard-num {
+  width: 23px;
+  height: 23px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg2);
+  color: var(--fg2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.onboard-step--active .onboard-num {
+  background: var(--acc);
+  color: var(--on-acc);
+}
+
+.onboard-step-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.onboard-step-desc {
+  font-size: 12px;
+  color: var(--fg2);
+  line-height: 1.65;
+  margin-bottom: 10px;
+}
+
+.onboard-detect-result {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--cy);
+}
+
+.onboard-step-body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 第一步的两种接入方式并排：视觉上是「二选一」，不是先后顺序 */
+.onboard-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.onboard-option {
+  padding: 12px 14px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r);
+  background: var(--bg1);
+}
+
+.onboard-option-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.onboard-option .onboard-step-desc {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 720px) {
+  .onboard-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+.onboard-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.onboard-cta {
+  height: 34px;
+  padding: 0 20px;
+  border-radius: var(--r);
+  background: var(--acc);
+  color: var(--on-acc);
+  font-size: 13px;
+  font-weight: 600;
+  transition: opacity 0.12s ease;
+}
+
+.onboard-cta:hover {
+  opacity: 0.9;
+}
+
+.onboard-skip {
+  font-size: 12px;
+  color: var(--fg3);
+}
+
+.onboard-skip:hover {
+  color: var(--fg);
+}
+
+.onboard-version {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--fg3);
+}

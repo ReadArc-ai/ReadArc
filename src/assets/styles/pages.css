@@ -1,0 +1,545 @@
+/* 原版页、镜像译文页、文本层、图表块、纸面深色、页边块 */
+
+/* ---- 公式块（渲染，不翻译） ---- */
+.doc-equation p {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--fg2);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  padding: 2px 0;
+}
+
+/* ---- 原版视图（pdf.js 整页渲染） ---- */
+.pdf-pages {
+  max-width: 980px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 原版对照：页面 | 平行译文列 */
+.pdf-pages--paired {
+  max-width: 1560px;
+}
+
+.pdf-banners {
+  max-width: 1360px;
+  margin: 0 auto 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pdf-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.pdf-pages--paired .pdf-row {
+  /* 镜像对照：左右两页等宽（BabelDOC 式并排） */
+  grid-template-columns: 1fr 1fr;
+}
+
+.pdf-trans {
+  position: relative;
+  min-height: 100%;
+  padding-top: 2px;
+}
+
+.pdf-trans-item {
+  padding: 0 2px;
+}
+
+.pdf-trans-heading {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg2);
+  padding: 2px 0 4px;
+  border-bottom: 1px solid var(--line2);
+  margin-bottom: 6px;
+}
+
+.pdf-trans-text {
+  font-family: var(--font-paper-zh);
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--fg);
+  margin-bottom: 10px;
+}
+
+.pdf-page {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-sm);
+  box-shadow: 0 1px 3px var(--shade);
+  overflow: hidden;
+}
+
+.pdf-page canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* 深色主题下白纸减眩光 */
+body[data-theme='dark'] .pdf-page {
+  filter: brightness(0.88);
+}
+
+/* ---- 原版页高亮覆盖层：创建时记录的选区矩形，马克笔色块 ---- */
+.hl-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3; /* 在文本层之上仍可点击移除；色块半透明不挡阅读 */
+}
+
+.hl-rect {
+  position: absolute;
+  background: var(--mark);
+  border-radius: 2px;
+  pointer-events: auto;
+  cursor: pointer;
+  mix-blend-mode: multiply; /* 叠在文字上呈马克笔效果而非盖住 */
+}
+
+.hl-rect:hover {
+  outline: 1px solid rgba(224, 163, 60, 0.8);
+}
+
+/* 镜像页文字内高亮：内容对齐（按字符占比投影），非位置对齐 */
+.tp-mark {
+  background: var(--mark);
+  color: inherit;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.tp-mark:hover {
+  outline: 1px solid rgba(224, 163, 60, 0.8);
+}
+
+
+.pdf-page--loading {
+  background: var(--bg2);
+}
+
+/* ---- 图/表块（ML 检测框截图） ---- */
+.doc-figure img {
+  max-width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  display: block;
+  margin: 4px auto;
+  border-radius: var(--r-sm);
+  background: #fff;
+}
+
+body[data-theme='dark'] .doc-figure img {
+  filter: brightness(0.9);
+}
+
+.doc-figure-placeholder {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--fg3);
+  text-align: center;
+  padding: 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-md);
+}
+
+/* ---- 镜像译文页（BabelDOC 式：译文按原版式重排） ---- */
+.tp-page {
+  position: relative;
+  overflow: hidden; /* 碰撞推挤后越过页底的部分裁掉，不串到下一行 */
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-sm);
+  box-shadow: 0 1px 3px var(--shade);
+  overflow: hidden;
+}
+
+body[data-theme='dark'] .tp-page {
+  filter: brightness(0.88);
+}
+
+.tp-slot {
+  position: absolute;
+  overflow: hidden;
+  /* 布局隔离：镜像块的字号拟合要反复「改字号→读高度」，没有 contain 时
+     每次读都触发整页强制布局；隔离后只重排这一个槽，整页挂载不再堆成长任务 */
+  contain: layout style paint;
+}
+
+.tp-block {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-paper-zh);
+  color: #141414;
+  line-height: 1.42;
+  text-align: justify;
+  /* 比槽还宽的单词（未翻译的英文标题、长公式）要换行而不是被切掉半个词：
+     换行后高度超出，拟合逻辑会把字号缩到放得下为止 */
+  overflow-wrap: anywhere;
+  /* 恢复次像素渲染：全局 antialiased 会让衬线中文笔画变细发灰，
+     与左侧画布（正常栅格化）对比显得模糊 */
+  -webkit-font-smoothing: auto;
+}
+
+/* 原文的表格线、彩色底块：在文字下面一层，坐标按页面百分比 */
+.tp-decor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.tp-decor > div {
+  position: absolute;
+  min-width: 0.5px;
+  min-height: 0.5px;
+}
+
+.tp-footnote-rule {
+  position: absolute;
+  min-height: 0.5px;
+  background: #141414;
+  pointer-events: none;
+}
+
+/* 中文宋体在双栏小字号下加粗不明显，译文强调文字用黑体区分正文。 */
+.tp-block:not(.tp-block--orig) strong {
+  font-family: var(--font-ui);
+  font-weight: 700;
+}
+
+/* 镜像页链接：贴近论文 hyperref 的深蓝，悬停加下划线提示可点 */
+.tp-link {
+  color: #1946c8;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.tp-link:hover {
+  text-decoration: underline;
+}
+
+/* 镜像页引用：与链接同色，点击跳参考文献 */
+.tp-cite {
+  color: #1946c8;
+  cursor: pointer;
+}
+
+.tp-cite:hover {
+  text-decoration: underline;
+}
+
+/* 原版页链接：命中测试在页面层做，这里只画悬停中的那一个框，
+   不再用覆盖元素抢走文字的双击与拖选 */
+.pdf-link-hover {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: 2px;
+  background: rgba(25, 70, 200, 0.12);
+}
+
+.pdf-page--link {
+  cursor: pointer;
+}
+
+.tp-block--heading {
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.tp-block--centered {
+  text-align: center;
+}
+
+/* 未译时先放原文（衬线拉丁），与译文视觉区分开 */
+.tp-block--orig {
+  font-family: var(--font-paper-en);
+  color: #3a3a3a;
+}
+
+.tp-block--pending {
+  opacity: 0.45;
+}
+
+.tp-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* 行内公式截图：高度与基线偏移由渲染端按原文几何写成 em，随译文字号缩放 */
+.tp-inline-fig {
+  display: inline-block;
+  width: auto;
+  vertical-align: baseline;
+  margin: 0 0.05em;
+}
+
+/* 截图缺失时退回文本层原文：用界面字体，别让 CJK 字体把数学符号渲染得走样 */
+.tp-inline-fig-text {
+  font-family: var(--font-ui);
+}
+
+/* ---- 原版页透明文本层（可选中/复制） ----
+   规则取自 pdfjs-dist/web/pdf_viewer.css 的 .textLayer（Apache-2.0）：
+   TextLayer.render 会把容器宽高写成依赖这些变量的表达式，缺一个就塌成 0 宽。 */
+.pdf-page {
+  position: relative;
+}
+
+.textLayer {
+  /* pdf.js .page 容器提供的变量，这里由文本层自己补上 */
+  --user-unit: 1;
+  --total-scale-factor: calc(var(--scale-factor) * var(--user-unit));
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+
+  color-scheme: only light;
+  position: absolute;
+  text-align: initial;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  z-index: 2;
+
+  :is(span, br) {
+    color: transparent;
+    position: absolute;
+    white-space: pre;
+    cursor: text;
+    transform-origin: 0% 0%;
+    user-select: text;
+  }
+
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+
+  > :not(.markedContent),
+  .markedContent span:not(.markedContent) {
+    z-index: 1;
+    --font-height: 0;
+    font-size: calc(var(--text-scale-factor) * var(--font-height));
+    --scale-x: 1;
+    --rotate: 0deg;
+    transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+  }
+
+  .markedContent {
+    display: contents;
+  }
+
+  span[role='img'] {
+    user-select: none;
+    cursor: default;
+  }
+
+  ::selection {
+    background: rgba(0, 106, 205, 0.3);
+    color: transparent;
+  }
+
+  br::selection {
+    background: transparent;
+  }
+
+  .endOfContent {
+    display: block;
+    position: absolute;
+    inset: 100% 0 0;
+    z-index: 0;
+    cursor: default;
+    user-select: none;
+  }
+
+  &.selecting .endOfContent {
+    top: 0;
+  }
+}
+
+
+/* 旋转的水印/竖排文本：不参与选择（巨型文本光标的来源） */
+.textLayer span[style*='--rotate: 90deg'],
+.textLayer span[style*='--rotate: 180deg'],
+.textLayer span[style*='--rotate: 270deg'],
+.textLayer span[style*='--rotate: -90deg'],
+.textLayer span[style*='--rotate: -180deg'],
+.textLayer span[style*='--rotate: -270deg'] {
+  user-select: none;
+  cursor: default;
+}
+
+/* 缩放控件 */
+.zoom-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.zoom-pct {
+  min-width: 44px;
+}
+
+/* 左栏收起开关 */
+.rail-toggle {
+  margin: 4px 6px 8px;
+  height: 22px;
+  border-radius: var(--r);
+  color: var(--fg3);
+  font-size: 11px;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.rail-toggle:hover {
+  color: var(--fg);
+  background: var(--bg1);
+}
+
+/* ---- 纸面深色：原文页整页反色（含图，和浏览器给 PDF 做深色模式一样），译文镜像页换深色配色 ----
+   选择器带 body 前缀是为了压过 body[data-theme='dark'] .pdf-page 的减眩光滤镜 */
+body .reader-doc--paper-dark .pdf-page,
+body .reader-doc--paper-dark .tp-page {
+  background: #1c1c1e;
+  border-color: #2c2c2e;
+  filter: none;
+}
+
+body .reader-doc--paper-dark .pdf-page canvas,
+body .reader-doc--paper-dark .tp-img,
+body .reader-doc--paper-dark .tp-inline-fig,
+body .reader-doc--paper-dark .tp-decor {
+  filter: invert(0.9) hue-rotate(180deg);
+}
+
+body .reader-doc--paper-dark .tp-block {
+  color: #d6d6d6;
+}
+
+body .reader-doc--paper-dark .tp-footnote-rule {
+  background: #d6d6d6;
+}
+
+body .reader-doc--paper-dark .tp-block--orig {
+  color: #a8a8a8;
+}
+
+body .reader-doc--paper-dark .tp-link,
+body .reader-doc--paper-dark .tp-cite {
+  color: #7fa6ff;
+}
+
+/* 高亮：深色纸面上 multiply 会发黑，改用 screen；镜像页马克色块上的文字用深色保持可读 */
+body .reader-doc--paper-dark .hl-rect {
+  mix-blend-mode: screen;
+  opacity: 0.6;
+}
+
+body .reader-doc--paper-dark .tp-mark {
+  color: #141414;
+}
+
+body .reader-doc--paper-dark .pdf-page--loading {
+  background: #1c1c1e;
+}
+
+/* 译文字号下拉：「字」字样 + 原生 select 去掉外观 + 自绘 chevron，整体套在 .tb-control 里 */
+.tb-zh-scale {
+  gap: 3px;
+  padding-right: 6px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.tb-zh-scale select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  padding: 0 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.tb-zh-scale-chev {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.tb-zh-scale-glyph {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--fg3);
+}
+
+/* ---- 镜像页的页边块：页眉页脚 / 页码 / 侧边水印，原文原位、小字淡色 ---- */
+.tp-slot--margin {
+  /* 槽位默认的 contain: paint 会把溢出裁掉，页边块要允许探出去 */
+  contain: layout style;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.tp-block--margin {
+  font-family: var(--font-paper-en);
+  color: #6f6f6f;
+  white-space: nowrap;
+  line-height: 1.2;
+  text-align: left;
+  /* 镜像页的衬线字体比原版略宽：允许溢出槽位，别把页眉最后一个字裁掉 */
+  overflow: visible;
+}
+
+/* 竖排水印：自下而上读（arXiv 左缘那一列） */
+.tp-block--rotated {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  width: 100%;
+  height: 100%;
+}
+
+body .reader-doc--paper-dark .tp-block--margin {
+  color: #8d8d8d;
+}
+
+/* 会话重命名：下拉临时换成同尺寸的输入框 */
+.chat-session-rename {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--acc);
+  border-radius: var(--r);
+  background: var(--bg2);
+  color: var(--fg);
+  font: 11.5px var(--font-ui);
+  outline: none;
+}
+
+.chat-session-action--icon svg {
+  display: block;
+}

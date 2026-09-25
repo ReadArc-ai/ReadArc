@@ -1,0 +1,118 @@
+# ReadArc 打包配置（GitHub 渠道 + Mac App Store）
+appId: com.brant.readarc
+productName: ReadArc
+# 构建号（CFBundleVersion）：同一版本号重传时递增；8 已上传，9 补齐 App Group 授权与早期启动诊断。
+buildVersion: "11"
+afterPack: scripts/verify-package.cjs
+copyright: Copyright © 2026 ReadArc
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**
+  - package.json
+  - LICENSE
+  - NOTICE
+  - PRIVACY.md
+  - PRIVACY.en.md
+  - THIRD_PARTY_NOTICES.md
+  - resources/dict/LICENSE.ECDICT
+  # 本地目录永不入包，即使维护者修改 output 目录。
+  - '!{release,local,design,.git,.github,scripts,build,electron,src,shared}/**'
+  - '!**/*.{p8,p12,pfx,pem,key,provisionprofile,mobileprovision}'
+  - '!**/.env*'
+  # 只带主进程真正 require 的外部依赖（渲染端依赖已被 vite 打进 bundle）：
+  # better-sqlite3 / yaml / pdfjs-dist 都零传递依赖
+  - node_modules/better-sqlite3/**
+  # sqlite 的 C 源码与编译脚本只在从源码构建时用得上，运行时只需要 lib/ 与 prebuilds/
+  - '!node_modules/better-sqlite3/{deps,src,build}/**'
+  - node_modules/yaml/**
+  - node_modules/pdfjs-dist/**
+  - node_modules/onnxruntime-node/**
+  # 安装期专用物不进包：install 脚本及其依赖（adm-zip/global-agent 链）运行时零调用
+  - '!node_modules/onnxruntime-node/script/**'
+  - '!node_modules/onnxruntime-node/node_modules/**'
+  - '!node_modules/adm-zip/**'
+  - node_modules/onnxruntime-common/**
+  - node_modules/@napi-rs/**
+  # 代理请求（主进程直接 import）
+  - node_modules/undici/**
+  # 渲染端依赖已由 vite 打进 bundle，主进程不 require；不带上省 10MB，也不把第三方 .map/.ts 源码装进包
+  - '!node_modules/{react,react-dom,scheduler,zustand,marked,dompurify}/**'
+
+# better-sqlite3 / onnxruntime-node / @napi-rs/canvas 都是 N-API 模块，预编译产物不绑定 Electron ABI，
+# 跳过 rebuild 省去对本机构建工具链的依赖
+npmRebuild: false
+
+# ML 版面模型（源码构建与 App Store 两个渠道都内置）。
+# 开发机没有时用 npm run model:download 拉取；缺失只影响解析质量（回退启发式）。
+# 只带运行时实际加载的 pp_doc_layoutv2（layout_cdla 是遗留实验产物，不进包）
+extraResources:
+  - from: resources/models
+    to: models
+    filter: ['pp_doc_layoutv2.onnx']
+  # 内置离线词典（ECDICT 精简库，MIT）：划词查单词零延迟
+  - from: resources/dict
+    to: dict
+    filter: ['ecdict.sqlite']
+
+asarUnpack:
+  - node_modules/better-sqlite3/**
+  - node_modules/onnxruntime-node/**
+  - node_modules/@napi-rs/**
+
+mac:
+  category: public.app-category.education
+  # electron-builder 只从 mac.extendInfo 合并主应用的 Info.plist。
+  extendInfo:
+    LSMultipleInstancesProhibited: true
+    # 出口合规：只用系统标准 HTTPS，不含自研或非豁免加密。声明后 App Store Connect 不再对每个构建追问
+    ITSAppUsesNonExemptEncryption: false
+  # 只带本平台要用的原生二进制：onnxruntime 与 better-sqlite3 的 npm 包里各平台预编译产物都在，
+  # 全带上会让 mac 包白白多出 100MB（Linux 的 .so、Windows 的 .dll、以及重复一份的 dylib）
+  files:
+    # 至少一个正向规则，避免平台配置只有排除项时默认加入 **/*。
+    - out/**
+    - '!node_modules/onnxruntime-node/bin/napi-v6/{linux,win32}/**'
+    - '!node_modules/better-sqlite3/prebuilds/{linux,linuxmusl,win32,android}-*'
+    # libonnxruntime.1.27.0.dylib 与 libonnxruntime.1.dylib 内容完全相同，
+    # 而 onnxruntime_binding.node 链接的是后者（otool 可查），带版本号那份纯属重复
+    - '!node_modules/onnxruntime-node/bin/napi-v6/darwin/*/libonnxruntime.*.*.*.dylib'
+
+# Mac App Store 构建：electron-builder --mac mas（需 MAS 分发证书 + provisioning profile）；维护者的发布脚本不在仓库内
+mas:
+  category: public.app-category.education
+  entitlements: build/entitlements.mas.plist
+  entitlementsInherit: build/entitlements.mas.inherit.plist
+  entitlementsLoginHelper: build/entitlements.mas.loginhelper.plist
+  hardenedRuntime: false
+  # 从 Apple Developer 下载的 Mac App Store 描述文件，放这里；文件本身不进 git
+  provisioningProfile: build/ReadArc_MAS.provisionprofile
+  icon: build/icon.icns
+  darkModeSupport: true
+  # 产物形态由 CLI `--mac mas` 决定（.pkg），这里不配 target
+
+dmg:
+  title: ReadArc
+
+win:
+  # Windows 用 .ico 或 1024px png（electron-builder 自己转），给 .icns 会打包失败
+  icon: build/icon.png
+  target: [nsis]
+  files:
+    # 至少一个正向规则，避免平台配置只有排除项时默认加入 **/*。
+    - out/**
+    - '!node_modules/onnxruntime-node/bin/napi-v6/{darwin,linux}/**'
+    - '!node_modules/better-sqlite3/prebuilds/{darwin,linux,linuxmusl,android}-*'
+
+linux:
+  icon: build/icon.png
+  target: [AppImage]
+  category: Education
+  files:
+    # 至少一个正向规则，避免平台配置只有排除项时默认加入 **/*。
+    - out/**
+    - '!node_modules/onnxruntime-node/bin/napi-v6/{darwin,win32}/**'
+    - '!node_modules/better-sqlite3/prebuilds/{darwin,win32,android}-*'

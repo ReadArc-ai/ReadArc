@@ -1,0 +1,235 @@
+/* 对照翻译状态、摘要卡、页首横幅 */
+
+/* ---- 对照翻译（正文栏） ---- */
+.doc-colheads {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 32px;
+  margin-bottom: 12px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg3);
+}
+
+.doc-colhead-zh {
+  color: var(--cy);
+}
+
+.doc-para--pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 32px;
+  align-items: start;
+}
+
+.doc-zh {
+  font-family: var(--font-paper-zh);
+  font-size: 15px;
+  line-height: 1.82; /* 中文行高必须比英文松 */
+  color: var(--fg);
+}
+
+.doc-zh--empty {
+  color: var(--fg3);
+  font-size: 12.5px;
+  font-family: var(--font-ui);
+  line-height: 1.82;
+}
+
+.doc-para--dim {
+  color: var(--fg3);
+}
+
+.zh-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding-top: 5px;
+}
+
+.zh-skeleton span {
+  display: block;
+  height: 13px; /* 与 15px/1.82 的行高节奏一致，避免完成时跳动 */
+  border-radius: 3px;
+  background: var(--bg2);
+}
+
+.zh-error {
+  border-left: 2px solid var(--vi);
+  background: var(--vi-soft);
+  border-radius: var(--r-md);
+  padding: 8px 12px;
+  font-size: 11.5px;
+  color: var(--fg2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  word-break: break-all;
+}
+
+.zh-error button {
+  align-self: flex-start;
+  color: var(--acc);
+  font-weight: 500;
+  font-size: 11.5px;
+}
+
+/* ---- AI 摘要卡 ---- */
+.summary-card {
+  margin-top: 10px;
+  background: var(--bg2);
+  border-left: 2px solid var(--cy);
+  border-radius: var(--r-md);
+  padding: 10px 14px;
+}
+
+.summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.summary-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cy);
+}
+
+.summary-meta {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--fg3);
+}
+
+.summary-text {
+  font-family: var(--font-paper-zh);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* ---- 页首横幅并排：翻译提示与「生成摘要」空态各占一半，论文首页再抬高一行；
+   有内容的摘要卡和费用确认条仍独占整行 ---- */
+body .pdf-banners {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+body .pdf-banners > .doc-notice,
+body .pdf-banners > .summary-card {
+  margin-top: 0;
+  min-width: 0;
+}
+
+body .pdf-banners > .doc-notice {
+  flex: 1 1 360px;
+}
+
+body .pdf-banners > .doc-notice--confirm,
+body .pdf-banners > .summary-card:not(.summary-card--empty) {
+  flex: 1 1 100%;
+}
+
+body .pdf-banners > .summary-card--empty {
+  flex: 0 1 auto;
+}
+
+/* ---- 翻译状态搬进工具栏：视图切换旁一行文字 + 文字按钮，不再是正文上方的横幅 ---- */
+body .tb-translate {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.tb-tr {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--fg2);
+  white-space: nowrap;
+}
+
+.tb-tr:empty {
+  display: none;
+}
+
+.tb-tr-ok {
+  color: var(--cy);
+  font-weight: 600;
+}
+
+.tb-tr-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.tb-tr .banner-by {
+  color: var(--fg3);
+}
+
+.tb-link {
+  flex: none;
+  color: var(--acc);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.tb-link--dim {
+  color: var(--fg3);
+  font-weight: 400;
+}
+
+.tb-link--dim:hover {
+  color: var(--fg2);
+}
+
+.tb-tr-bar {
+  flex: 0 1 120px;
+  min-width: 60px;
+}
+
+/* ---- 摘要卡可收起：只留标题行，箭头指示；全局记住 ---- */
+.summary-fold {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--cy);
+}
+
+.summary-fold-chev {
+  opacity: 0.7;
+  transition: transform 0.12s ease;
+}
+
+.summary-fold-chev.is-open {
+  transform: rotate(90deg);
+}
+
+body .summary-card--folded {
+  padding: 6px 12px;
+}
+
+body .summary-card--folded .summary-head {
+  margin-bottom: 0;
+}
+
+/* 关闭按钮相对整个弹窗定位（此前挂在滚动区里，内容一滚就不见了） */
+body .settings-modal {
+  position: relative;
+}
+
+/* 内容区也是定位元素且在它之后，不抬层级会被盖住 */
+body .settings-modal-close {
+  z-index: 2;
+}

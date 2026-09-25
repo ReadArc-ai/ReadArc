@@ -1,0 +1,99 @@
+/* 基础控件统一（放最后：靠源顺序压过各处的默认外观） */
+
+/* ==========================================================================
+   基础控件统一：输入框 / 下拉 / 多行框 / 焦点环 / 确认框
+   全部关掉系统原生外观，mac、Windows、Linux 看到的是同一套。
+   各处已有的类样式（.set-input、.find-bar input 等）优先级更高，只补它们没写的部分。
+   ========================================================================== */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+textarea,
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: normal;
+  color: var(--fg);
+  box-shadow: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--fg3);
+  opacity: 1;
+}
+
+/* Chromium 自带的搜索清除叉、数字上下箭头、密码显示按钮一律不要，各平台自画 */
+input::-webkit-search-cancel-button,
+input::-webkit-search-decoration,
+input::-webkit-inner-spin-button,
+input::-webkit-outer-spin-button,
+input::-webkit-credentials-auto-fill-button,
+input::-ms-reveal {
+  appearance: none;
+  -webkit-appearance: none;
+  display: none;
+}
+
+/* 下拉：统一右侧箭头，文字过长省略；三处自带箭头的下拉不重复画 */
+select:not(.model-picker select, .chat-session-picker select, .tb-zh-scale select) {
+  padding-right: 24px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%238e8e8e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  background-size: 12px 12px;
+}
+
+select {
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 展开的选项列表在 Windows / Linux 由 Chromium 绘制，给它应用的配色 */
+option,
+optgroup {
+  background: var(--bg1);
+  color: var(--fg);
+  font-family: var(--font-ui);
+}
+
+optgroup {
+  color: var(--fg3);
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 键盘焦点环：只在键盘导航时出现，鼠标点击不画 */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: var(--acc);
+  box-shadow: 0 0 0 3px var(--acc-soft);
+}
+
+button:focus-visible,
+a:focus-visible,
+[role='button']:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+
+button:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* 文本选区颜色跟主题走，不用系统默认的蓝 */
+::selection {
+  background: color-mix(in srgb, var(--acc) 28%, transparent);
+}

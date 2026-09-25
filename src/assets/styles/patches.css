@@ -1,0 +1,125 @@
+/* 跨模块的后期调整：这些规则要压过多个模块里的同名选择器，必须排在它们后面。新样式优先写进对应模块，别往这里加 */
+
+/* ---- 收起/展开按钮图标化（左栏、目录、面板）：字符 ⟨ ⟩ 太小太淡，换成侧栏图标 ---- */
+.rail-toggle,
+.outline-toggle,
+.outline-collapse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rail-toggle svg,
+.outline-toggle svg,
+.outline-collapse svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* 目录头：标签可截断，「译」与百分比不被挤出（英文 OUTLINE 曾被切成 OUTLIN） */
+.outline-head .outline-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 笔记面板顶部的 AI 动作行（从工具栏搬来） */
+/* 笔记页头部：条数在左、AI 生成在右（次级按钮） */
+.notes-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line2);
+}
+
+.notes-count {
+  font-size: 11.5px;
+  color: var(--fg3);
+}
+
+.notes-empty {
+  padding: 28px 12px;
+  text-align: center;
+}
+
+.notes-empty-title {
+  font-size: 13px;
+  color: var(--fg2);
+  margin-bottom: 4px;
+}
+
+.notes-empty .placeholder-note {
+  padding: 0;
+}
+
+/* AI 生成的笔记：来源标识替代锚点摘录，左边框用 AI 色与手写笔记的马克笔色区分 */
+.note-kind {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--cy);
+}
+
+.note-item--ai {
+  border-left: 2px solid var(--cy);
+}
+
+/* 摘要卡的空态：一行搞定（标签 + 文字按钮），与上方翻译横幅同一节奏，不再是一张放大按钮的卡 */
+.summary-card--empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+}
+
+.summary-inline-btn {
+  color: var(--acc);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.summary-inline-btn:disabled {
+  color: var(--fg3);
+}
+
+/* 搜索结果卡：悬停有反馈（整卡可读性提示），主操作在右列 */
+.search-card {
+  border: 1px solid transparent;
+  transition: border-color 0.12s ease;
+}
+
+.search-card:hover {
+  border-color: var(--line);
+}
+
+/* 摘要卡右上：模型名 + 「重新生成」 */
+.summary-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.summary-head-actions .summary-inline-btn {
+  font-size: 11px;
+}
+
+/* 横幅里的模型选择（重译用）：不撑满，和按钮并排 */
+.model-picker--inline {
+  flex: none;
+  max-width: 220px;
+}
+
+.model-picker--inline select {
+  background: var(--bg1);
+  border-color: var(--line);
+  font-size: 11.5px;
+}
+
+.doc-notice .banner-by {
+  color: var(--fg3);
+}

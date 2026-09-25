@@ -1,0 +1,269 @@
+/* 标题栏、左栏、用量块、屏幕骨架 */
+
+/* ---- app frame ---- */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ---- titlebar (40px) ---- */
+.titlebar {
+  height: var(--h-titlebar);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg0);
+  border-bottom: 1px solid var(--line2);
+  padding: 0 10px;
+  -webkit-app-region: drag;
+}
+
+.titlebar--mac {
+  /* 交通灯位于 x:12，留出内嵌空间 */
+  padding-left: 78px;
+}
+
+.titlebar button,
+.titlebar input {
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+}
+
+.titlebar-brand svg {
+  width: 17px;
+  height: 17px;
+  color: var(--brand-teal-lift);
+}
+
+body[data-theme='light'] .titlebar-brand svg {
+  color: var(--brand-teal);
+}
+
+.titlebar-brand span {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.titlebar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.titlebar-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  max-width: 420px;
+  height: 25px;
+  padding: 0 8px;
+  background: var(--bg2);
+  border-radius: var(--r);
+  color: var(--fg3);
+}
+
+.titlebar-search svg {
+  width: 11px;
+  height: 11px;
+  flex: none;
+}
+
+.titlebar-search input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--fg);
+  font-size: 11.5px;
+}
+
+.titlebar-search input::placeholder {
+  color: var(--fg3);
+}
+
+.titlebar-search kbd {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--fg3);
+  flex: none;
+}
+
+.titlebar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.tb-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 25px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  color: var(--fg2);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  transition:
+    color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.tb-control:hover {
+  color: var(--acc);
+  border-color: var(--acc);
+}
+
+/* 纯图标的工具栏按钮（面板开关等）：正方形、图标 15px */
+.tb-icon {
+  width: 28px;
+  padding: 0;
+}
+
+.tb-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ---- left rail (192px) ---- */
+.rail {
+  position: relative;
+  width: var(--w-rail);
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg0);
+  border-right: 1px solid var(--line2);
+  padding-top: 10px;
+}
+
+.rail--sm {
+  width: 52px;
+}
+
+.rail-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 6px 2px;
+  padding: 7px 8px;
+  border-radius: var(--r);
+  color: var(--fg2);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  transition:
+    color 0.12s ease,
+    background 0.12s ease;
+}
+
+.rail-item:hover {
+  color: var(--fg);
+  background: var(--bg1);
+}
+
+.rail-item svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.rail-item-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.rail-item-key {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg3);
+}
+
+.rail--sm .rail-item {
+  justify-content: center;
+}
+
+.rail-spacer {
+  flex: 1;
+}
+
+/* ---- usage block ---- */
+.rail-usage {
+  border-top: 1px solid var(--line2);
+  padding: 11px 12px;
+}
+
+.rail-usage-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg3);
+}
+
+.rail-usage-amount {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--fg);
+  margin-top: 5px;
+}
+
+
+
+/* ---- screen scaffold ---- */
+.screen {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg0);
+  overflow: hidden;
+}
+
+.screen-header {
+  min-height: var(--h-header);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+  background: var(--bg1);
+  border-bottom: 1px solid var(--line2);
+}
+
+.screen-header h1 {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.screen-header .screen-hint {
+  font-size: 11.5px;
+  color: var(--fg3);
+}
+
+.screen-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}

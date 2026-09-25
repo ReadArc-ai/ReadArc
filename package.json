@@ -1,0 +1,77 @@
+{
+  "name": "readarc",
+  "version": "1.0.1",
+  "private": true,
+  "description": "AI paper reader - local-first, BYOK",
+  "main": "out/main/index.js",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReadArc-ai/ReadArc.git"
+  },
+  "homepage": "https://readarc.ai",
+  "bugs": {
+    "url": "https://github.com/ReadArc-ai/ReadArc/issues"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "dev": "electron-vite dev --watch",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "dist:mas": "electron-vite build && env -u NODE_TLS_REJECT_UNAUTHORIZED electron-builder --mac mas",
+    "pack": "npm run build && env -u NODE_TLS_REJECT_UNAUTHORIZED CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --dir",
+    "dist:mac": "npm run build && env -u NODE_TLS_REJECT_UNAUTHORIZED electron-builder --mac",
+    "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
+    "lint": "eslint src electron shared",
+    "test": "vitest run",
+    "model:download": "node scripts/download-model.mjs",
+    "model:verify": "node scripts/download-model.mjs --verify",
+    "dict:build": "node scripts/build-dict.mjs",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build",
+    "source:check": "node scripts/check-source.mjs",
+    "test:release": "node --test scripts/verify-package.test.cjs"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^1.0.7",
+    "better-sqlite3": "^13.0.3",
+    "dompurify": "^3.4.14",
+    "marked": "^18.0.10",
+    "onnxruntime-node": "^1.27.0",
+    "pdfjs-dist": "^6.2.108",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "undici": "^8.10.0",
+    "yaml": "^2.9.0",
+    "zustand": "^5.0.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.1.8",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/ws": "^8.18.1",
+    "@vitejs/plugin-react": "^5.0.0",
+    "electron": "^44.4.3",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^4.0.0",
+    "eslint": "^10.8.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "tailwindcss": "^4.1.8",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.67.0",
+    "vite": "^7.1.0",
+    "vitest": "^4.1.11",
+    "ws": "^8.21.3"
+  },
+  "author": "ReadArc",
+  "overrides": {
+    "@xmldom/xmldom": "^0.8.15",
+    "adm-zip": "^0.6.1",
+    "fast-uri": "^3.1.7",
+    "js-yaml": "^4.3.2"
+  }
+}

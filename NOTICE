@@ -1,0 +1,34 @@
+ReadArc
+Copyright 2026 ReadArc contributors
+
+本产品代码以 Apache License 2.0 授权。
+
+商标声明 / Trademark Notice:
+「ReadArc」名称、Logo 与应用图标为商标，不在代码授权范围内。
+任何修改版或再分发版（包括上架任何应用商店）不得使用 ReadArc 的名称与图标，
+不得以 ReadArc 的名义发布，也不得暗示由 ReadArc 官方发布或背书。
+官方发行渠道只有 github.com/ReadArc-ai/ReadArc 与 Mac App Store。
+The "ReadArc" name, logo and app icon are trademarks and are NOT
+licensed under the Apache License. Modified or redistributed builds
+(including submissions to any app store) must not use the ReadArc name
+or icon, must not be published as ReadArc, and must not suggest that
+they are released or endorsed by ReadArc. The only official channels
+are github.com/ReadArc-ai/ReadArc and the Mac App Store.
+
+第三方资产与代码：
+- src/assets/logos/ 下的模型供应商图标取自 Lobe Icons（MIT License，
+  Copyright 2023 LobeHub）；图标所代表的名称与商标归各自权利人所有，
+  这里只用于标识相应供应商。
+- src/assets/styles/pages.css 中的 .textLayer 规则改编自 pdf.js
+  （pdfjs-dist, Apache License 2.0, Mozilla Foundation）。
+- 内置离线词典数据来自 skywind3000/ECDICT（MIT License），
+  按词频裁剪打包为 resources/dict/ecdict.sqlite。
+- src/app/shell/icons.tsx 中的设置齿轮图标路径取自 Feather Icons
+  （MIT License, Cole Bemis）。
+- 内置版面识别模型 PP-DocLayoutV2 来自 PaddleOCR
+  （Apache License 2.0, PaddlePaddle Authors），ONNX 转换
+  参考 RapidAI/RapidLayout（Apache License 2.0）。模型文件
+  不随源码仓库分发，构建时从 ModelScope 下载。
+
+MIT 许可全文与详细归属见 THIRD_PARTY_NOTICES.md；ECDICT 的许可副本见
+resources/dict/LICENSE.ECDICT。

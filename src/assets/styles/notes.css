@@ -1,0 +1,149 @@
+/* 笔记面板与笔记条目 */
+
+/* ---- 笔记面板 ---- */
+.notes-tab {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.notes-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.note-composer {
+  background: var(--bg2);
+  border: 1px solid var(--acc);
+  border-radius: var(--r-md);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.note-composer blockquote {
+  font-size: 11px;
+  color: var(--fg3);
+  border-left: 2px solid var(--mark);
+  padding-left: 8px;
+  line-height: 1.5;
+}
+
+.note-composer textarea {
+  width: 100%;
+  resize: none;
+  background: var(--bg1);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  color: var(--fg);
+  font-size: 12.5px;
+  font-family: var(--font-ui);
+  padding: 7px 9px;
+  outline: none;
+  line-height: 1.5;
+}
+
+.note-composer textarea:focus {
+  border-color: var(--acc);
+}
+
+.note-composer-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.note-item {
+  background: var(--bg2);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note-anchor {
+  text-align: left;
+  font-size: 11px;
+  color: var(--fg3);
+  border-left: 2px solid var(--mark);
+  padding-left: 8px;
+  line-height: 1.5;
+  transition: color 0.12s ease;
+}
+
+.note-anchor:hover {
+  color: var(--fg);
+}
+
+.note-text {
+  font-size: 12.5px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.note-stamp {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--fg3);
+}
+
+.notes-footer {
+  flex: none;
+  border-top: 1px solid var(--line2);
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg3);
+}
+
+/* ---- 笔记条目删除：右上角小 ×，悬停才现 ---- */
+body .note-item {
+  position: relative;
+}
+
+.note-del {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r);
+  color: var(--fg3);
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+
+.note-item:hover .note-del,
+.note-del:focus-visible {
+  opacity: 1;
+}
+
+.note-del:hover {
+  color: var(--fg);
+  background: var(--bg3);
+}
+
+/* ---- 流式草稿盒：灰字、限高、内部滚动（笔记 / 摘要生成中共用） ---- */
+.stream-box {
+  max-height: 200px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--r-sm);
+}
+
+.stream-box .stream-text {
+  color: var(--fg3);
+}
+
+.stream-box .stream-text strong {
+  color: var(--fg2);
+}

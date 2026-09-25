@@ -1,0 +1,190 @@
+/* 搜索页 */
+
+/* ---- 搜索 ---- */
+.search-content {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 26px 24px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.search-title {
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.search-box {
+  display: flex;
+  gap: 8px;
+  background: var(--bg1);
+  border: 1px solid var(--acc);
+  border-radius: var(--r-md);
+  box-shadow: 0 0 0 3px var(--acc-soft);
+  padding: 6px 8px 6px 14px;
+  align-items: center;
+}
+
+.search-box input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--fg);
+  font-size: 14px;
+}
+
+.search-sources {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.search-source-chip {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--fg2);
+  border: 1px solid var(--line2);
+  background: var(--bg1);
+  border-radius: var(--r);
+  padding: 3px 9px;
+}
+
+.search-dedup {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--fg3);
+}
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.search-card {
+  display: flex;
+  gap: 16px;
+  background: var(--bg1);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+}
+
+.search-card-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.search-card-meta {
+  display: flex;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--fg3);
+}
+
+.search-badge {
+  background: var(--acc-soft);
+  color: var(--acc);
+  padding: 1px 7px;
+  border-radius: var(--r-sm);
+}
+
+.search-card-title {
+  font-family: var(--font-paper-en);
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+.search-card-authors {
+  font-size: 11.5px;
+  color: var(--fg3);
+}
+
+.search-card-why {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12px;
+  color: var(--fg2);
+}
+
+.search-why-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  color: var(--cy);
+  flex: none;
+}
+
+.search-card-error {
+  font-size: 11px;
+  color: var(--vi);
+}
+
+.search-card-actions {
+  /* 按钮文案长度随语言变（「加入论文库」/「Add to library」），列宽跟着内容走，不许换行 */
+  min-width: 82px;
+  flex: none;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+/* ---- 成本护栏 ---- */
+.doc-notice--confirm {
+  border-left-color: var(--vi);
+}
+
+.doc-notice--confirm strong {
+  color: var(--fg);
+}
+
+/* ---- 检索：快的源先渲染 / 总结等待可见 ---- */
+
+/* 还没回来的源：虚线、淡色，和失败的实线红色区分开 */
+.search-source-chip--pending {
+  border-style: dashed;
+  color: var(--fg3);
+}
+
+/* AI 总结等待态：跳动的圆点 + 秒数，替代原来一整条禁用按钮 */
+.insight-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--fg2);
+}
+
+.insight-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cy);
+  animation: pop-in 0.8s ease infinite alternate;
+}
+
+.insight-status-hint {
+  font-family: var(--font-ui);
+  color: var(--fg3);
+}
+
+/* 中文检索词被转成英文后的提示行 */
+.search-used {
+  margin: -4px 0 10px;
+  font-size: 11.5px;
+  color: var(--fg3);
+}

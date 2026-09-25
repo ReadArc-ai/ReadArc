@@ -1,0 +1,481 @@
+/* 命令面板、查找条、浮层、高亮、崩溃页、拖入导入、气泡、确认框 */
+
+/* ---- ⌘K 命令面板 ---- */
+.palette-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--shade);
+  display: flex;
+  justify-content: center;
+  padding-top: 12vh;
+  z-index: 100;
+}
+
+.palette {
+  width: 520px;
+  max-height: 420px;
+  align-self: flex-start;
+  background: var(--bg1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: 0 12px 40px var(--shade);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.palette input {
+  width: 100%;
+  background: none;
+  border: none;
+  outline: none;
+  border-bottom: 1px solid var(--line2);
+  padding: 13px 16px;
+  color: var(--fg);
+  font-size: 14px;
+}
+
+.palette-list {
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: var(--r);
+  color: var(--fg2);
+  font-size: 12.5px;
+}
+
+.palette-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.palette-hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg3);
+  flex: none;
+}
+
+/* ---- ⌘F 查找条 ---- */
+.find-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: var(--bg1);
+  border-bottom: 1px solid var(--line2);
+}
+
+.find-bar input {
+  flex: 1;
+  max-width: 320px;
+  height: 25px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 0 9px;
+  color: var(--fg);
+  font-size: 12px;
+  outline: none;
+}
+
+.find-bar input:focus {
+  border-color: var(--acc);
+}
+
+.find-count {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--fg3);
+  min-width: 40px;
+}
+
+.find-bar button {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-sm);
+  color: var(--fg2);
+  border: 1px solid var(--line);
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.find-bar button:hover {
+  color: var(--acc);
+  border-color: var(--acc);
+}
+
+/* ---- sm 档浮层面板（[P3]） ---- */
+.panel-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--shade);
+  animation: mask-in 0.18s ease-out;
+}
+
+@keyframes mask-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.context-panel--overlay {
+  position: fixed;
+  top: var(--h-titlebar);
+  right: 0;
+  bottom: 0;
+  width: min(344px, 88vw);
+  box-shadow: -8px 0 30px var(--shade);
+  animation: panel-in 0.18s ease-out;
+}
+
+@keyframes panel-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* ---- 选区操作浮层（只做透明度，不做位移） ---- */
+.selection-popover {
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 80;
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  background: var(--bg1);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: 0 4px 16px var(--shade);
+  animation: pop-in 0.12s ease;
+}
+
+@keyframes pop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.selection-popover button {
+  width: 26px;
+  height: 24px;
+  border-radius: var(--r-sm);
+  color: var(--fg2);
+  font-size: 12px;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+/* Edge 式悬停文字提示：即时浮出在按钮下方（原生 title 太迟钝） */
+.selection-popover button {
+  position: relative;
+}
+
+.selection-popover button::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  box-shadow: 0 2px 8px var(--shade);
+  color: var(--fg);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.selection-popover button:hover::after {
+  opacity: 1;
+}
+
+.selection-popover button:hover {
+  color: var(--acc);
+  background: var(--bg2);
+}
+
+/* ---- 高亮（--mark 底、2px 圆角、0 2px 内边距；不是链接） ---- */
+.hl {
+  background: var(--mark);
+  border-radius: 2px;
+  padding: 0 2px;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* PDF 首页缩略图（替代版面纹理占位） */
+.lib-cover-thumb {
+  flex: 1;
+  min-height: 0;
+  margin-top: 2px;
+  width: 100%;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 2px;
+  /* 深色主题下白纸首页刺眼，压一点 */
+  opacity: 0.92;
+}
+
+/* 离线徽标（提示是「离线」不是「出错」） */
+.tb-offline {
+  color: var(--vi);
+  border-color: var(--vi);
+  cursor: default;
+}
+
+/* ---- AI 增值卡（找矛盾 / 检索总结） ---- */
+.insight-card {
+  background: var(--bg2);
+  border-left: 2px solid var(--cy);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  margin: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.insight-card--dashed {
+  margin: 0;
+  background: transparent;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-lg);
+}
+
+.insight-text {
+  font-size: 12.5px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+/* ---- 崩溃兜底页 ---- */
+.crash-screen {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  background: var(--bg0);
+  color: var(--fg);
+}
+
+.crash-screen h1 {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.crash-screen p {
+  font-size: 12.5px;
+  color: var(--fg2);
+  max-width: 480px;
+  text-align: center;
+  line-height: 1.7;
+}
+
+.crash-screen pre {
+  max-width: 640px;
+  max-height: 200px;
+  overflow: auto;
+  font-size: 10px;
+  color: var(--fg3);
+  background: var(--bg1);
+  border: 1px solid var(--line2);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+}
+
+/* ---- 拖入导入的反馈：悬停覆盖层 + 全局导入状态提示 ---- */
+
+/* 文件悬停在窗口上：整窗一层虚线框，不拦事件（drop 仍落在 .app 上） */
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg0) 55%, transparent);
+  animation: pop-in 0.12s ease;
+}
+
+.drop-overlay-box {
+  padding: 18px 28px;
+  border: 2px dashed var(--acc);
+  border-radius: var(--r-lg);
+  background: var(--bg1);
+  color: var(--acc);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* 底部居中的导入状态：解析进度 / 失败原因（阅读器空态与引导页自己展示时不出现） */
+.import-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(600px, calc(100vw - 48px));
+  padding: 8px 14px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+  font-size: 12.5px;
+  color: var(--fg);
+  animation: pop-in 0.15s ease;
+}
+
+.import-toast--error {
+  border-radius: var(--r-lg);
+  border-color: var(--vi);
+  color: var(--vi);
+}
+
+.import-toast-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cy);
+  animation: pop-in 0.8s ease infinite alternate;
+}
+
+.import-toast-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.import-toast--error .import-toast-text {
+  white-space: normal;
+}
+
+.import-toast-bar {
+  flex: none;
+  width: 110px;
+}
+
+/* ---- 快速提示气泡（替代原生 title：120ms 出现、样式受控） ---- */
+.ui-tip {
+  position: fixed;
+  z-index: 200;
+  max-width: 320px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: var(--fg);
+  color: var(--bg0);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  animation: pop-in 0.08s ease;
+}
+
+/* 应用内确认框 */
+.dlg-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: var(--shade);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dlg {
+  width: 380px;
+  max-width: calc(100vw - 48px);
+  background: var(--bg1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: 0 12px 40px var(--shade);
+  padding: 18px 18px 14px;
+}
+
+.dlg-title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--fg);
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.dlg-body {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--fg2);
+  white-space: pre-line;
+}
+
+.dlg-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.dlg-btn {
+  height: 28px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  color: var(--fg2);
+  font-size: 12px;
+  font-weight: 500;
+  transition: color 0.12s ease, border-color 0.12s ease, filter 0.12s ease;
+}
+
+.dlg-btn:hover {
+  color: var(--fg);
+  border-color: var(--fg3);
+}
+
+.dlg-btn--primary {
+  background: var(--acc);
+  border-color: var(--acc);
+  color: var(--on-acc);
+}
+
+.dlg-btn--danger {
+  background: var(--vi);
+  border-color: var(--vi);
+  color: #fff;
+}
+
+.dlg-btn--primary:hover,
+.dlg-btn--danger:hover {
+  color: #fff;
+  filter: brightness(1.1);
+}
+
+/* 确认框按钮的键盘焦点：用柔和的光环，不用粗描边压住按钮本身的颜色 */
+.dlg-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--acc-soft);
+}

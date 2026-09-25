@@ -1,0 +1,112 @@
+/* ReadArc design tokens — the single source of truth for colour, radius and
+   elevation. Components must read these variables, never hard-code values. */
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  /* surfaces, back to front */
+  --bg0: #171717;            /* window / document ground */
+  --bg1: #212121;            /* panels, cards, toolbars */
+  --bg2: #2f2f2f;            /* inputs, chips, inset blocks */
+  --bg3: #3a3a3a;            /* progress tracks, scrollbar thumb */
+
+  --line:  rgba(255,255,255,.10);  /* interactive borders */
+  --line2: rgba(255,255,255,.06);  /* structural dividers */
+
+  --fg:  #ececec;            /* primary text */
+  --fg2: #b4b4b4;            /* secondary text, icons */
+  --fg3: #8e8e8e;            /* labels, metadata, disabled */
+
+  --acc:     #006acd;        /* accent: selection, primary action */
+  --acc-soft: rgba(0,106,205,.16);
+  --on-acc:  #ffffff;        /* text on accent */
+
+  --cy:      #3fb6c8;        /* "AI said this" / positive state */
+  --cy-soft: rgba(63,182,200,.15);
+  --vi:      #a98cf0;        /* caveats, gaps, warnings */
+  --vi-soft: rgba(169,140,240,.15);
+  --ok:      #4cc38a;        /* 成功态：连通 / 已保存 */
+
+  --paper: #303030;          /* the document sheet itself */
+  --shade: rgba(0,0,0,.45);  /* shadow color */
+  --mark:  rgba(224,163,60,.30); /* highlighter — deliberately NOT the accent,
+                                    or highlights read as hyperlinks */
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg0: #f8f8f8;
+  --bg1: #ffffff;
+  --bg2: #f0f0f0;
+  --bg3: #ebebeb;
+
+  --line:  #d4d4d4;
+  --line2: #e5e5e5;
+
+  --fg:  #111111;
+  --fg2: #555555;
+  --fg3: #999999;
+
+  --acc:     #003f7a;
+  --acc-soft: rgba(0,63,122,.08);
+  --on-acc:  #ffffff;
+
+  --cy:      #0b6b7a;
+  --cy-soft: rgba(11,107,122,.10);
+  --vi:      #6d4bc4;
+  --vi-soft: rgba(109,75,196,.10);
+  --ok:      #1f8a4c;
+
+  --paper: #ffffff;
+  --shade: rgba(80,80,90,.16);
+  --mark:  rgba(240,180,60,.42);
+}
+
+/* ---- brand (fixed across themes) ---- */
+:root {
+  --brand-teal:      #0f766e;  /* light backgrounds, wordmark, web */
+  --brand-teal-lift: #2dd4bf;  /* dark backgrounds — #0f766e lacks contrast there */
+  --brand-ink:       #101418;  /* icon background; cooler than --bg0 on purpose,
+                                  so the Dock icon separates from the window */
+}
+
+/* ---- type ---- */
+:root {
+  --font-ui:      Manrope, "Noto Sans SC", system-ui, sans-serif;
+  --font-mono:    "IBM Plex Mono", ui-monospace, monospace;  /* numbers, IDs, labels */
+  --font-paper-en: "Source Serif 4", Georgia, serif;         /* paper body, EN */
+  --font-paper-zh: "Noto Serif SC", serif;                   /* paper body, ZH */
+}
+
+/* Type scale as used. Line-height is the second number.
+   Chinese body copy runs looser than English: 1.80 vs 1.68. */
+/* display   23px / 1.35  600  — onboarding headline
+   title     19px / 1.30  600  — screen titles
+   h-paper   26px / 1.26  600  — paper title (serif, -0.01em)
+   body      15px / 1.68  400  — paper body EN (serif)
+   body-zh   15px / 1.82  400  — paper body ZH (serif)
+   ui        13px / 1.00  500  — nav, buttons
+   ui-sm    12.5px/ 1.50  400  — secondary UI
+   ui-xs    11.5px/ 1.00  500  — chips, toolbar
+   label     9.5px/ 1.00  500  — mono, .14em tracking, uppercase
+*/
+
+/* ---- radii ---- */
+:root {
+  --r-sm: 5px;   /* chips, inline tags */
+  --r:    6px;   /* buttons, inputs, rows */
+  --r-md: 8px;   /* inset blocks */
+  --r-lg: 10px;  /* cards, panels, the paper sheet */
+  --r-icon: 22.37%; /* app icon squircle — 114.6px at 512 */
+}
+
+/* ---- fixed chrome sizes ---- */
+:root {
+  --h-titlebar: 40px;
+  --h-toolbar:  40px;   /* min-height; wraps when narrow */
+  --h-header:   52px;   /* min-height; screen headers */
+  --w-rail:     192px;  /* left nav; 52px when collapsed */
+  --w-outline:  184px;  /* reader outline */
+  --w-panel:    344px;  /* context panel; 300px at md */
+  --w-doc-min:  400px;  /* the document never gets narrower than this */
+}

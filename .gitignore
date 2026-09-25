@@ -1,0 +1,38 @@
+# macOS
+.DS_Store
+
+# dependencies
+node_modules/
+
+# build output
+dist/
+out/
+release/
+*.icns.tmp
+
+# local env & secrets
+.env
+.env.*
+*.provisionprofile
+*.mobileprovision
+*.p12
+*.pfx
+*.p8
+*.pem
+*.key
+
+# editor / tooling
+.idea/
+*.local
+*.log
+resources/models/*.onnx
+resources/models/*.part
+
+# local working files
+design/
+local/
+.claude/
+
+# Python release helpers
+__pycache__/
+*.pyc

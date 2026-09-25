@@ -1,0 +1,433 @@
+/* 论文库 */
+
+/* ---- 论文库 ---- */
+.lib-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.lib-sidebar {
+  width: 176px;
+  flex: none;
+  border-right: 1px solid var(--line2);
+  background: var(--bg0);
+  padding: 14px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.lib-section-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg3);
+  padding: 0 8px;
+  margin: 8px 0 6px;
+}
+
+.lib-side-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: var(--r);
+  font-size: 12.5px;
+  color: var(--fg2);
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.lib-side-item:hover {
+  color: var(--fg);
+}
+
+.lib-side-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg3);
+}
+
+.lib-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.lib-covers {
+  padding: 16px 20px 32px;
+}
+
+/* 继续读书架 */
+.lib-shelf {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.lib-shelf-card {
+  width: 184px;
+  display: flex;
+  gap: 10px;
+  background: var(--bg1);
+  border-radius: 9px;
+  padding: 9px;
+  text-align: left;
+  transition: background 0.12s ease;
+}
+
+.lib-shelf-card:hover {
+  background: var(--bg2);
+}
+
+.lib-shelf-thumb {
+  width: 44px;
+  flex: none;
+}
+
+.lib-shelf-thumb .lib-cover {
+  padding: 5px 5px 4px;
+}
+
+.lib-shelf-thumb .lib-cover-title,
+.lib-shelf-thumb .lib-cover-source {
+  display: none;
+}
+
+.lib-shelf-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lib-shelf-title {
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.lib-shelf-section {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lib-shelf-bar {
+  height: 3px;
+  background: var(--bg3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.lib-shelf-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--acc);
+  transition: width 0.3s ease;
+}
+
+/* 封面网格 */
+.lib-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
+  gap: 22px 16px;
+}
+
+.lib-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  text-align: left;
+}
+
+/* 删除按钮：悬停卡片/行才现身，避免网格里一片叉 */
+.lib-del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  color: var(--fg3);
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.12s ease;
+}
+
+.lib-del:hover {
+  color: var(--red, #e5534b);
+  background: var(--bg3);
+}
+
+.lib-card .lib-del {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  background: var(--bg2);
+}
+
+.lib-card:hover .lib-del,
+.lib-table tbody tr:hover .lib-del {
+  opacity: 1;
+}
+
+.lib-td-del {
+  width: 28px;
+}
+
+/* 双击词的墨迹对齐高亮：画布真实字形边界,替代漂移的原生选区视觉 */
+.word-sel-flash {
+  position: absolute;
+  background: rgba(0, 106, 205, 0.28);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.textLayer.dbl-selecting ::selection {
+  background: transparent;
+}
+
+/* 划词翻译结果气泡：挂在浮层下方,可选中复制 */
+.sel-trans {
+  position: absolute;
+  /* 默认挂工具条上方——下方是用户正在读的原文，不能挡 */
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 380px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--cy);
+  color: var(--fg);
+  font-size: 12.5px;
+  line-height: 1.55;
+  text-align: left;
+  user-select: text;
+  cursor: text;
+  white-space: pre-line;
+  max-height: 300px;
+  overflow-y: auto;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+}
+
+/* 选区贴近屏幕顶时翻到下方，避免被视口裁掉 */
+.sel-trans--below {
+  bottom: auto;
+  top: calc(100% + 6px);
+}
+
+.sel-trans-dim {
+  color: var(--fg3);
+}
+
+/* 库卡片的翻译进度标签 */
+.lib-trans-tag {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--cy);
+  background: color-mix(in srgb, var(--cy) 12%, transparent);
+}
+
+.lib-cover {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  background: var(--paper);
+  border: 1px solid var(--line2);
+  border-radius: 5px;
+  padding: 13px 12px 10px;
+  box-shadow: 0 2px 8px var(--shade);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+  transition: border-color 0.12s ease;
+}
+
+.lib-card:hover .lib-cover {
+  border-color: var(--line);
+}
+
+.lib-cover-source {
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg3);
+}
+
+.lib-cover-title {
+  font-family: var(--font-paper-en);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 版面纹理占位——真实实现换成 PDF 首页缩略图 */
+.lib-cover-texture {
+  flex: 1;
+  margin-top: 2px;
+  opacity: 0.2;
+  background:
+    repeating-linear-gradient(var(--fg3) 0 1px, transparent 1px 5px) left / 46% 100% no-repeat,
+    repeating-linear-gradient(var(--fg3) 0 1px, transparent 1px 5px) right / 46% 100% no-repeat;
+}
+
+.lib-cover-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--bg3);
+}
+
+.lib-cover-progress > span {
+  display: block;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.lib-card-zh {
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lib-card-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lib-card-status {
+  font-size: 9.5px;
+}
+
+/* 列表视图 */
+.lib-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.lib-table th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg3);
+  font-weight: 500;
+  background: var(--bg1);
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line2);
+}
+
+.lib-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line2);
+}
+
+.lib-table tbody tr {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.lib-table tbody tr:hover {
+  background: var(--bg1);
+}
+
+.lib-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.lib-td-title {
+  font-weight: 500;
+  max-width: 380px;
+}
+
+.lib-td-zh {
+  display: block;
+  font-size: 11px;
+  color: var(--fg3);
+  font-weight: 400;
+}
+
+.lib-td-dim {
+  color: var(--fg3);
+  font-size: 11.5px;
+}
+
+.lib-td-progress {
+  width: 90px;
+}
+
+.lib-row-bar {
+  display: block;
+  height: 3px;
+  background: var(--bg3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.lib-row-bar > span {
+  display: block;
+  height: 100%;
+}
+
+/* 「问」引用块 */
+.chat-quote {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--bg2);
+  border-left: 2px solid var(--acc);
+  border-radius: var(--r-sm);
+  padding: 6px 9px;
+  font-size: 11px;
+  color: var(--fg2);
+  line-height: 1.5;
+}
+
+.chat-quote button {
+  color: var(--fg3);
+  flex: none;
+}
+
+.chat-quote button:hover {
+  color: var(--fg);
+}
