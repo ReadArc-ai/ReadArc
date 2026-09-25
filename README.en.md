@@ -6,6 +6,10 @@
 
 ### Read papers, effortlessly.
 
+**Mid-Autumn & National Day offer · September 25–October 25, 2026**
+
+Get ReadArc free on the Mac App Store during this month-long celebration. Pick a paper and discover your next idea.
+
 A local-first AI desktop app for research reading: side-by-side translation with the layout preserved, answers that point back to the source, Markdown notes, and a genuinely free choice of models.
 
 [![CI](https://github.com/ReadArc-ai/ReadArc/actions/workflows/ci.yml/badge.svg)](https://github.com/ReadArc-ai/ReadArc/actions/workflows/ci.yml)
@@ -17,7 +21,7 @@ A local-first AI desktop app for research reading: side-by-side translation with
 
 <img src=".github/screenshots/en/01-reader.webp" alt="ReadArc side-by-side reading view" width="920">
 
-**[Get it on the Mac App Store](https://apps.apple.com/cn/app/readarc/id6803315888?mt=12&l=en-GB) · [Website](https://readarc.ai/en/)**
+**[Get it free on the Mac App Store](https://apps.apple.com/cn/app/readarc/id6803315888?mt=12&l=en-GB) · [Website](https://readarc.ai/en/)**
 
 <sub>The open-source build and the App Store build have the same features. Papers and notes are stored locally; AI requests go directly to your chosen service.</sub>
 
@@ -57,17 +61,17 @@ Most reference tools are good at collecting. ReadArc is about understanding. Onc
 
 ### Mac App Store
 
-For people who want it to just work: Apple handles installation and automatic updates, no development setup needed. A single purchase also supports long-term maintenance of ReadArc.
+For people who want it to just work: Apple handles installation and automatic updates, no development setup needed. Get the App Store version free during our Mid-Autumn & National Day offer, September 25–October 25, 2026.
 
-**[Get ReadArc on the Mac App Store →](https://apps.apple.com/cn/app/readarc/id6803315888?mt=12&l=en-GB)**
+**[Get ReadArc free on the Mac App Store →](https://apps.apple.com/cn/app/readarc/id6803315888?mt=12&l=en-GB)**
 
-Available now as a one-time purchase. The link opens the China storefront in English.
+This month-long offer covers the app itself; cloud model API usage is billed separately by your chosen provider. The link opens the China storefront in English.
 
 ### Build from source · free
 
 The full source is open under Apache-2.0. A build you make yourself has the same code and the same features as the App Store build. There is no paywall. The only differences are distribution, signing and updates.
 
-GitHub carries the source only. No prebuilt DMG, PKG or `.app` is published. If you want a signed install with automatic updates, get the paid build from the Mac App Store.
+GitHub carries the source only. No prebuilt DMG, PKG or `.app` is published. If you want a signed install with automatic updates, get ReadArc from the Mac App Store.
 
 The primary development and testing platform is **macOS** (11 or newer). Building from source needs Node.js 22.19.0 or newer.
 
@@ -147,7 +151,7 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing. Bugs and fea
 <details>
 <summary><strong>Does the App Store build have more features than the source build?</strong></summary>
 
-No. Both come from the same source and have the same features. The App Store price pays for a signed, convenient install, automatic updates, and continued maintenance of the project.
+No. Both come from the same source and have the same features. The App Store build provides a signed, convenient install and automatic updates. It is free to get during this Mid-Autumn & National Day offer.
 
 </details>
 

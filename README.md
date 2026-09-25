@@ -6,6 +6,10 @@
 
 ### 轻松读懂论文
 
+**中秋国庆限免活动｜2026 年 9 月 25 日—10 月 25 日**
+
+活动期间，ReadArc 在 Mac App Store 免费获取。一起轻松读懂论文，开启下一个好想法。
+
 一款面向研究阅读的 local-first AI 桌面应用：原文与译文对照、版面保真、可追溯问答、Markdown 笔记，以及真正自由的模型选择。
 
 [![CI](https://github.com/ReadArc-ai/ReadArc/actions/workflows/ci.yml/badge.svg)](https://github.com/ReadArc-ai/ReadArc/actions/workflows/ci.yml)
@@ -17,7 +21,7 @@
 
 <img src=".github/screenshots/01-reader.webp" alt="ReadArc 原文与译文对照阅读界面" width="920">
 
-**[在 Mac App Store 获取](https://apps.apple.com/cn/app/readarc/id6803315888?mt=12) · [官网](https://readarc.ai/)**
+**[在 Mac App Store 免费获取](https://apps.apple.com/cn/app/readarc/id6803315888?mt=12) · [官网](https://readarc.ai/)**
 
 <sub>开源源码与 App Store 版本功能一致。论文与笔记保存在本机，AI 请求直连你选择的服务。</sub>
 
@@ -57,17 +61,17 @@
 
 ### Mac App Store
 
-适合希望开箱即用的用户：由 Apple 完成安装与自动更新，无需准备开发环境。一次购买也直接支持 ReadArc 的长期维护。
+适合希望开箱即用的用户：由 Apple 完成安装与自动更新，无需准备开发环境。中秋国庆活动期间（2026 年 9 月 25 日—10 月 25 日），可免费获取 App Store 版本。
 
-**[在 Mac App Store 获取 ReadArc →](https://apps.apple.com/cn/app/readarc/id6803315888?mt=12)**
+**[在 Mac App Store 免费获取 ReadArc →](https://apps.apple.com/cn/app/readarc/id6803315888?mt=12)**
 
-现已上架，一次购买。
+本次限免为期一个月，限免范围为应用本身；云端模型 API 费用仍由所选供应商另行收取。
 
 ### 从源码构建 · 免费
 
 完整源码以 Apache-2.0 开放。自行构建的版本与 App Store 版本使用同一套代码和功能，不设付费功能墙；区别只在分发、签名和更新方式。
 
-GitHub 仅提供源码，不发布预编译的 DMG、PKG 或 `.app`。希望直接安装和自动更新，请从 Mac App Store 获取付费版本。
+GitHub 仅提供源码，不发布预编译的 DMG、PKG 或 `.app`。希望直接安装和自动更新，请从 Mac App Store 获取。
 
 当前主要开发和验证平台是 **macOS**（11 或更高版本）。从源码构建需要 Node.js 22.19.0 或更高版本。
 
@@ -147,7 +151,7 @@ npm run build
 <details>
 <summary><strong>App Store 版比源码版多功能吗？</strong></summary>
 
-没有。两个版本来自同一份源码，功能一致。App Store 费用对应经过签名的便捷安装、自动更新，以及对项目持续维护的支持。
+没有。两个版本来自同一份源码，功能一致。App Store 版提供经过签名的便捷安装与自动更新，本次中秋国庆活动期间可免费获取。
 
 </details>
 
