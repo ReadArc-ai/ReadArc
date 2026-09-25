@@ -4,7 +4,7 @@
 
 # [ReadArc](https://readarc.ai/en/)
 
-### Understand papers, not just collect them
+### Read papers, effortlessly.
 
 A local-first AI desktop app for research reading: side-by-side translation with the layout preserved, answers that point back to the source, Markdown notes, and a genuinely free choice of models.
 
