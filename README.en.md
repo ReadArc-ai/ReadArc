@@ -6,9 +6,9 @@
 
 ### Read papers, effortlessly.
 
-**Mid-Autumn & National Day offer · September 25–October 25, 2026**
-
-Get ReadArc free on the Mac App Store during this month-long celebration. Pick a paper and discover your next idea.
+<a href="https://apps.apple.com/cn/app/readarc/id6803315888?mt=12&amp;l=en-GB">
+  <img src=".github/campaigns/holiday-2026-en.webp" alt="ReadArc Mid-Autumn and National Day offer: free on the Mac App Store, September 25–October 25, 2026" width="920">
+</a>
 
 A local-first AI desktop app for research reading: side-by-side translation with the layout preserved, answers that point back to the source, Markdown notes, and a genuinely free choice of models.
 

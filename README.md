@@ -6,9 +6,9 @@
 
 ### 轻松读懂论文
 
-**中秋国庆限免活动｜2026 年 9 月 25 日—10 月 25 日**
-
-活动期间，ReadArc 在 Mac App Store 免费获取。一起轻松读懂论文，开启下一个好想法。
+<a href="https://apps.apple.com/cn/app/readarc/id6803315888?mt=12">
+  <img src=".github/campaigns/holiday-2026-zh.webp" alt="ReadArc 中秋国庆限时免费：2026 年 9 月 25 日至 10 月 25 日，在 Mac App Store 免费获取" width="920">
+</a>
 
 一款面向研究阅读的 local-first AI 桌面应用：原文与译文对照、版面保真、可追溯问答、Markdown 笔记，以及真正自由的模型选择。
 
