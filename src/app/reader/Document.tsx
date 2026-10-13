@@ -319,6 +319,14 @@ export function ReaderDocument({
   // 否则工具栏会一直显示「还有 N 段未翻译」，点了也不会有变化
   const paras = blocks.filter((b) => (b.kind === 'para' || b.kind === 'heading') && !skipTranslation(b.text, targetLang))
   const untranslated = paras.filter((b) => !translations[b.block_id]?.text).length
+  // 未译段里最常见的失败原因（Key 无效、余额不足、限流、模型没给出有效译文……）。
+  // 原因只挂在段落的悬停提示上的话，整篇失败时用户只看到「N 段未翻译」，不知道该做什么
+  const failCounts = new Map<string, number>()
+  for (const b of paras) {
+    const tr = translations[b.block_id]
+    if (!tr?.text && tr?.error) failCounts.set(tr.error, (failCounts.get(tr.error) ?? 0) + 1)
+  }
+  const failReason = [...failCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
   // 进度按「还在等模型」的段数算，而不是按「没有译文」的段数：整篇重译时旧译文留在屏上，
   // 按后者算进度会一直是 100%
   const pendingCount = paras.filter((b) => translations[b.block_id]?.pending).length
@@ -447,6 +455,11 @@ export function ReaderDocument({
       {showBanner && !pendingEstimate && (
         <>
           <span className="tb-tr-text">{`${untranslated} ${t('reader.paras-untranslated')}`}</span>
+          {failReason && (
+            <span className="tb-tr-text tb-tr-reason" title={failReason}>
+              {failReason}
+            </span>
+          )}
           {/* 用设置里的翻译模型（没单独指定就是默认模型） */}
           <button className="tb-link" onClick={() => void startTranslation(false, false)}>
             {untranslated < paras.length ? t('doc.continue-translate') : t('reader.translate-all')}

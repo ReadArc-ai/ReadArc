@@ -57,11 +57,51 @@ function fakeRunner(calls: { messages: string; model: string }[]): AttemptRunner
 }
 
 describe('translateBlock', () => {
-  it('丢失公式的回答不入缓存，但消耗仍记账', async () => {
+  it('丢了公式：点名占位符重试一次，重试对了就用重试结果', async () => {
     const block = para(0, 'We compare the results using ⟦f1⟧.')
     replaceBlocks(db, paperId, [block])
-    const runner: AttemptRunner = async () => ({ text: '我们比较这些结果。', usage: { inputTokens: 12, outputTokens: 6 } })
+    const systems: string[] = []
+    const runner: AttemptRunner = async (_ep, _model, req) => {
+      systems.push(String(req.messages[0].content))
+      return systems.length === 1
+        ? { text: '我们比较这些结果。', usage: { inputTokens: 12, outputTokens: 6 } }
+        : { text: '我们使用 ⟦f1⟧ 比较结果。', usage: { inputTokens: 12, outputTokens: 6 } }
+    }
+    const result = await translateBlock(db, { ctx, glossary: EMPTY_GLOSSARY, runner }, block, {})
+    expect(systems).toHaveLength(2)
+    expect(systems[1]).toContain('⟦f1⟧')
+    expect(result.text).toBe('我们使用 ⟦f1⟧ 比较结果。')
+    // 两次请求都真实消耗了 token
+    expect(monthUsage(db)).toEqual({ inputTokens: 24, outputTokens: 12 })
+  })
+
+  it('重试仍丢公式和脚注标号：修补后入缓存，公式与标号一个不少', async () => {
+    const block = para(0, 'We compare the results using ⟦f1⟧ as reported.^3^')
+    replaceBlocks(db, paperId, [block])
+    let calls = 0
+    const runner: AttemptRunner = async () => {
+      calls++
+      return { text: '我们按报告比较了这些结果。', usage: { inputTokens: 12, outputTokens: 6 } }
+    }
+    const result = await translateBlock(db, { ctx, glossary: EMPTY_GLOSSARY, runner }, block, {})
+    expect(calls).toBe(2)
+    expect(result.text).toBe('我们按报告比较了这些结果 ⟦f1⟧^3^。')
+    expect(cachedTranslations(db, paperId, EMPTY_GLOSSARY.version)[block.block_id].text).toBe(result.text)
+  })
+
+  it('答成英文的不是译文：直接拒收，不重试，消耗仍记账', async () => {
+    const text =
+      'We compare the results using ⟦f1⟧ and find that the proposed method consistently outperforms ' +
+      'the baselines across all of the evaluated benchmarks and settings.'
+    const block = para(0, text)
+    replaceBlocks(db, paperId, [block])
+    let calls = 0
+    const runner: AttemptRunner = async () => {
+      calls++
+      return { text: 'The results are compared and the method outperforms the baselines on every benchmark we tried.', usage: { inputTokens: 12, outputTokens: 6 } }
+    }
     await expect(translateBlock(db, { ctx, glossary: EMPTY_GLOSSARY, runner }, block, {})).rejects.toThrow()
+    expect(calls).toBe(1)
     expect(getTranslation(db, block.block_id, EMPTY_GLOSSARY.version, PROMPT_VERSION)).toBeUndefined()
     expect(monthUsage(db)).toEqual({ inputTokens: 12, outputTokens: 6 })
   })

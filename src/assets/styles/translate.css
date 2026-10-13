@@ -174,6 +174,13 @@ body .tb-translate {
   font-variant-numeric: tabular-nums;
 }
 
+/* 未译段的失败原因：跟在「N 段未翻译」后面，过长时截断，悬停看全文 */
+.tb-tr-reason {
+  flex: 0 1 auto;
+  white-space: nowrap;
+  color: var(--vi);
+}
+
 .tb-tr .banner-by {
   color: var(--fg3);
 }

@@ -63,7 +63,7 @@ const ZH: LangText = {
       '只输出译文本身：不复述原文，不加 "Translation:"、"Bold:"、"译文：" 之类的任何前缀或说明；不增减段。',
     fragment: '你是学术论文翻译引擎。把用户给出的选段译成准确、克制的中文学术文体。',
     fragmentRules: '规则：只输出译文本身，不复述原文，不加任何前缀、解释或引号；公式、引用标号、URL 与专有名词原样保留。',
-    placeholderStrict: (need) => `特别注意：原文里的行内公式占位符是 ${need}，译文必须各保留一次、原样照抄在对应位置，不能漏掉，也不能自己新增其他 ⟦f…⟧ 编号。`,
+    placeholderStrict: (need) => `特别注意：原文里的行内公式占位符与上下标标记是 ${need}，译文必须各保留一次、原样照抄在对应位置，不能漏掉，也不能自己新增其他 ⟦f…⟧ 编号或 ^…^、~…~ 标记。`,
     headings: '你是学术论文章节标题翻译引擎。逐行翻译给出的标题列表。',
     headingsRules: '规则：每行输出「编号) 译文」，编号与输入一致；保留标题中的章节编号（如 3.2）与专有名词原样写法；不加解释、不增减行。',
     summary:
@@ -100,7 +100,7 @@ function forLanguage(name: string): LangText {
       'Output only the translations: no repetition of the source, no prefixes such as "Translation:"; do not add or drop passages.',
     fragment: `You are an academic translation engine. Translate the user's selection into precise, restrained academic ${name}.`,
     fragmentRules: 'Rules: output only the translation, without repeating the source or adding prefixes, explanations or quotes; keep formulas, citation numbers, URLs and proper nouns as written.',
-    placeholderStrict: (need) => `Important: the inline formula placeholders in the source are ${need}. Keep each of them exactly once, verbatim, at the corresponding position; do not drop any and do not invent other ⟦f…⟧ numbers.`,
+    placeholderStrict: (need) => `Important: the inline formula placeholders and super/subscript markers in the source are ${need}. Keep each of them exactly once, verbatim, at the corresponding position; do not drop any and do not invent other ⟦f…⟧ numbers or ^…^ / ~…~ markers.`,
     headings: `You translate academic paper section headings into ${name}. Translate the numbered list line by line.`,
     headingsRules: 'Rules: output each line as "N) translation" with the same number as the input; keep section numbers (such as 3.2) and proper nouns as written; no explanations, do not add or drop lines.',
     summary:

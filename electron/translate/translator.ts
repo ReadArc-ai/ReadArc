@@ -21,7 +21,7 @@ import {
   type RouterContext
 } from '../model/router'
 import type { Glossary } from './glossary'
-import { preservesInlineContent } from '../../shared/translation-integrity'
+import { preservesInlineContent, repairScriptMarks, scriptMarkList } from '../../shared/translation-integrity'
 
 /** 提示词形状变更时递增——缓存键的一半 */
 export const PROMPT_VERSION = 1
@@ -62,11 +62,20 @@ export const IDENTITY_MODEL = 'identity'
 
 
 export function looksUntranslated(src: string, out: string, lang: TargetLang = targetLang()): boolean {
+  if (!out.trim()) return true
+  if (!preservesInlineContent(src, out)) return true
+  return isNotTranslation(src, out, lang)
+}
+
+/**
+ * 只判断输出是不是译文，不管公式 / 上下标对不对得上。
+ * translateBlock 据此区分两种失败：不是译文的直接拒收；是译文但公式对不上的先重试、再修补。
+ */
+export function isNotTranslation(src: string, out: string, lang: TargetLang = targetLang()): boolean {
   // 空输出永远不是译文。这一条必须排在所有豁免之前：文献条目豁免（下面那条）
   // 曾让模型返回的空串一路写进缓存，块从此「有行但没内容」——
   // 库卡片按行数算 100%，阅读器按内容算未译，点继续翻译又被空缓存当命中挡回去。
   if (!out.trim()) return true
-  if (!preservesInlineContent(src, out)) return true
   // 思考标签（哪怕只剩半边）说明输出是推理模型的思考流，不是译文
   if (/<\/?think>/i.test(out)) return true
   if (lang !== 'zh') {
@@ -216,17 +225,20 @@ export async function translateBlock(
   let text = stripMetaPrefix(out.result.text)
   // 被完整性检查拒收的回答也已消耗 token，不能漏记。
   recordUsage(db, 'translate', out.attempt.slug, out.model, out.result.usage.inputTokens, out.result.usage.outputTokens)
-  // 行内公式占位符必须一一对应：少了公式就从译文里消失，多了（模型编的序号）页面上会露出一串 ⟦f6⟧。
-  // 对不上重试一次并把要保留的占位符点名给它；还不行就修补（去掉编的、缺的补在句末）
-  if (!looksUntranslated(block.text, text, lang) && !placeholdersMatch(block.text, text)) {
-    const need = placeholderNumbers(block.text).map(inlinePlaceholder).join(' ')
+  // 行内公式占位符与上下标标记必须一一对应：少了公式就从译文里消失，多了（模型编的序号）页面上会露出一串 ⟦f6⟧。
+  // 对不上重试一次并把要保留的占位符和标记点名给它；还不行就修补（去掉编的、缺的补在句末）。
+  // 这里必须用 isNotTranslation：looksUntranslated 自带公式校验，用它判断会让本分支永远进不来，
+  // 公式对不上的段直接被拒收、一直挂在「未翻译」
+  if (!isNotTranslation(block.text, text, lang) && !preservesInlineContent(block.text, text)) {
+    const need = [...placeholderNumbers(block.text).map(inlinePlaceholder), ...scriptMarkList(block.text)].join(' ')
     const messages = buildMessages(block, neighbors, deps.glossary, lang)
     messages[0] = { ...messages[0], content: `${messages[0].content}\n\n${LANG_TEXT[lang].placeholderStrict(need || '（无）')}` }
     const again = await runTask('translate', { messages, temperature: 0.1 }, deps.ctx, () => {}, deps.runner)
     recordUsage(db, 'translate', again.attempt.slug, again.model, again.result.usage.inputTokens, again.result.usage.outputTokens)
     const retried = stripMetaPrefix(again.result.text)
-    if (!looksUntranslated(block.text, retried, lang)) text = retried
+    if (!isNotTranslation(block.text, retried, lang)) text = retried
     if (!placeholdersMatch(block.text, text)) text = repairPlaceholders(block.text, text)
+    if (!preservesInlineContent(block.text, text)) text = repairScriptMarks(block.text, text)
   }
   if (looksUntranslated(block.text, text, lang)) {
     // 模型交了白卷、而原文本来就没有散文（作者栏、符号串、全大写短标题）：原样当译文，
