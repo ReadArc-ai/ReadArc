@@ -97,6 +97,9 @@ export const IPC = {
   menuOpenSettings: 'menu:open-settings',
   menuOpenPrivacy: 'menu:open-privacy',
   menuImport: 'menu:import',
+  /* 外部程序（Finder「打开方式」、Zotero 等）交来的 PDF */
+  openFiles: 'open:files',
+  openFilesTake: 'open:files-take',
   libraryPick: 'library:pick',
   libraryList: 'library:list',
   paperOpen: 'paper:open',
@@ -173,6 +176,10 @@ export interface ReadArcBridge {
   onMenuAction(cb: (action: 'settings' | 'import' | 'privacy') => void): () => void
   /** 弹系统文件框选 PDF，只返回路径；导入走 importPdfs，进度提示才能统一 */
   pickPdfs(): Promise<string[]>
+  /** 取走启动前就排队的外部打开请求（冷启动时文件早于界面到达），取过之后新请求经 onOpenFiles 推送 */
+  takeOpenFiles(): Promise<string[]>
+  /** 应用运行中收到的外部打开请求 */
+  onOpenFiles(cb: (paths: string[]) => void): () => void
   listPapers(): Promise<PaperRow[]>
   openPaper(paperId: string): Promise<PaperBundle | null>
   /** 主进程在后台给老论文补完页边块后通知：当前论文就重新拉一次块列表 */

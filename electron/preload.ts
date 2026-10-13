@@ -41,6 +41,12 @@ const bridge: ReadArcBridge = {
     }
   },
   pickPdfs: () => ipcRenderer.invoke(IPC.libraryPick),
+  takeOpenFiles: () => ipcRenderer.invoke(IPC.openFilesTake),
+  onOpenFiles: (cb: (paths: string[]) => void) => {
+    const listener = (_e: Electron.IpcRendererEvent, paths: string[]): void => cb(paths)
+    ipcRenderer.on(IPC.openFiles, listener)
+    return () => ipcRenderer.removeListener(IPC.openFiles, listener)
+  },
   listPapers: () => ipcRenderer.invoke(IPC.libraryList),
   openPaper: (paperId: string) => ipcRenderer.invoke(IPC.paperOpen, paperId),
   deletePaper: (paperId: string) => ipcRenderer.invoke(IPC.paperDelete, paperId),

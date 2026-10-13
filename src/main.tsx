@@ -59,7 +59,12 @@ async function bootstrap(): Promise<void> {
     useChat.setState({ customPersonas, persona: known ? persona : 'default' })
     // [P1] 开机即读：恢复上次的论文与位置，不 await——外壳先渲染，数据到了即显示。
     // 上次那篇已被删（或从未记录）时退回最近打开的一篇：有论文的老用户不该面对空阅读器
+    // 外部程序（Finder「打开方式」、Zotero）打开的 PDF 优先于恢复上次的论文：先订阅再取队列，中间到达的请求不会漏
+    window.readarc.onOpenFiles((paths) => void usePaper.getState().importFiles(paths, { quietExisting: true }))
+    const opening = await window.readarc.takeOpenFiles()
+    if (opening.length > 0) void usePaper.getState().importFiles(opening, { quietExisting: true })
     void (async () => {
+      if (opening.length > 0) return
       if (settings.lastPaperId) await usePaper.getState().loadPaper(settings.lastPaperId)
       if (usePaper.getState().bundle || !settings.onboarded) return
       const papers = await window.readarc.listPapers()

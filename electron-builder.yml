@@ -70,6 +70,13 @@ mac:
     LSMultipleInstancesProhibited: true
     # 出口合规：只用系统标准 HTTPS，不含自研或非豁免加密。声明后 App Store Connect 不再对每个构建追问
     ITSAppUsesNonExemptEncryption: false
+    # 声明能打开 PDF：Finder「打开方式」与 Zotero 等「用指定程序打开」才会把文件交给我们（open-file）。
+    # Alternate 只表示能打开，不抢系统默认阅读器；沙盒下由 Launch Services 授予该文件的读权限
+    CFBundleDocumentTypes:
+      - CFBundleTypeName: PDF Document
+        CFBundleTypeRole: Viewer
+        LSHandlerRank: Alternate
+        LSItemContentTypes: [com.adobe.pdf]
   # 只带本平台要用的原生二进制：onnxruntime 与 better-sqlite3 的 npm 包里各平台预编译产物都在，
   # 全带上会让 mac 包白白多出 100MB（Linux 的 .so、Windows 的 .dll、以及重复一份的 dylib）
   files:

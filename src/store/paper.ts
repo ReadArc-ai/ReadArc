@@ -54,7 +54,8 @@ interface PaperState {
   loadPaper(paperId: string): Promise<void>
   /** 主进程后台补完页边块：当前论文就只换块列表，其余状态（滚动、译文）不动 */
   refreshBlocks(paperId: string): Promise<void>
-  importFiles(paths: string[]): Promise<void>
+  /** quietExisting：外部程序（Zotero 等）反复打开同一篇时，不提示「已在库中」 */
+  importFiles(paths: string[], opts?: { quietExisting?: boolean }): Promise<void>
   /** 弹文件框选 PDF 后导入，进度、失败提示和拖入完全一样 */
   pickAndImport(): Promise<void>
   reportScroll(progressPct: number, scrollRatio: number, section: string | null): void
@@ -257,7 +258,7 @@ export const usePaper = create<PaperState>((set, get) => ({
     }))
   },
 
-  importFiles: async (paths) => {
+  importFiles: async (paths, opts) => {
     if (paths.length === 0) return
     set({ importing: true, importError: null })
     try {
@@ -267,7 +268,7 @@ export const usePaper = create<PaperState>((set, get) => ({
         set({ importError: failures.map((f) => `${f.file}${zh ? '：' : ': '}${f.error}`).join(zh ? '；' : '; ') })
       }
       // 全是已在库里的：告诉用户一声，不然像什么都没发生
-      if (outcomes.length > 0 && outcomes.every((o) => o.existing)) {
+      if (!opts?.quietExisting && outcomes.length > 0 && outcomes.every((o) => o.existing)) {
         set({ importNotice: tNow(outcomes.length === 1 ? 'import.exists' : 'import.exists-many') })
         setTimeout(() => set({ importNotice: null }), 5000)
       }

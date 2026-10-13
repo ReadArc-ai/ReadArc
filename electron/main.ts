@@ -7,6 +7,7 @@ import { resumePendingLayouts, setLayoutNotifier, sweepOrphanCopies, sweepStaleF
 import { absorbAskRouteIntoMain } from './config/main-model'
 import { registerAllIpc } from './ipc'
 import { describeError, logStartup, reportFatal, startupLogPath } from './startup'
+import { enqueueOpenFiles, markRendererLoading, pdfPathsFromArgv, registerOpenFilesIpc } from './open-files'
 
 const isMac = process.platform === 'darwin'
 
@@ -205,6 +206,9 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
+  // 页面（重新）加载期间外部打开请求先排队，等新页面取走
+  win.webContents.on('did-start-loading', markRendererLoading)
+
   // 拖拽文件若未被页面拦截，Chromium 默认会把窗口导航到 file://（表现为黑屏）——一律禁止
   win.webContents.on('will-navigate', (e, url) => {
     const devServer = process.env['ELECTRON_RENDERER_URL']
@@ -240,7 +244,20 @@ function createWindow(): void {
 const isPrimaryInstance = process.mas === true || app.requestSingleInstanceLock()
 if (!isPrimaryInstance) app.quit()
 
-app.on('second-instance', () => {
+/**
+ * 外部程序打开 PDF。macOS 走 open-file（冷启动时它早于 ready 到达，必须在模块顶层注册）；
+ * Windows / Linux 走命令行参数：首个实例看 process.argv，之后的启动由 second-instance 转交。
+ */
+app.on('open-file', (e, path) => {
+  e.preventDefault()
+  enqueueOpenFiles([path])
+  // macOS 关掉所有窗口后应用仍在运行：没有窗口就新开一个，由它取走队列
+  if (app.isReady() && isPrimaryInstance && BrowserWindow.getAllWindows().length === 0) createWindow()
+})
+if (isPrimaryInstance) enqueueOpenFiles(pdfPathsFromArgv(process.argv.slice(1)))
+
+app.on('second-instance', (_e, argv) => {
+  enqueueOpenFiles(pdfPathsFromArgv(argv.slice(1)))
   const win = BrowserWindow.getAllWindows()[0]
   if (!win) return
   if (win.isMinimized()) win.restore()
@@ -262,6 +279,7 @@ app.whenReady().then(() => {
       }
     })
     registerAllIpc({ rebuildMenu: buildAppMenu })
+    registerOpenFilesIpc()
   } catch (err) {
     reportFatal('ipc registration failed', err)
   }
