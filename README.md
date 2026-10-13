@@ -106,7 +106,7 @@ open release/mac-arm64/ReadArc.app
 
 ReadArc 不出售 token，也不代理你的模型请求。打开设置（`⌘,`）后，可以按任务选择不同模型：
 
-- OpenAI、Anthropic、Gemini、DeepSeek、SiliconFlow、OpenRouter 等官方服务；
+- OpenAI、Anthropic、Gemini、DeepSeek、SiliconFlow、OpenRouter、AiHubMix 等官方服务；
 - 任意 OpenAI-compatible API、自建网关或兼容端点；
 - Ollama、LM Studio 等本地模型，适合断网或私密材料。
 

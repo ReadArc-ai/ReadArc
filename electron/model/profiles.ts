@@ -66,6 +66,14 @@ export const BUILTIN_PROFILES: BuiltinProfile[] = [
     signupUrl: 'https://openrouter.ai'
   },
   {
+    slug: 'aihubmix',
+    name: 'AiHubMix',
+    baseUrl: 'https://aihubmix.com/v1',
+    keyEnv: 'AIHUBMIX_API_KEY',
+    transport: 'openai_chat',
+    signupUrl: 'https://aihubmix.com'
+  },
+  {
     slug: 'ollama',
     name: 'Ollama',
     baseUrl: 'http://127.0.0.1:11434/v1',

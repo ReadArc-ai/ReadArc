@@ -68,29 +68,42 @@
   border-bottom: none;
 }
 
+/* 来源图标：统一 28px 圆角底块，品牌色 / 单色 / 首字母三种内容尺寸一致 */
 .provider-logo {
-  width: 17px;
-  height: 17px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--bg1);
+  border: 1px solid var(--line);
+  color: var(--fg);
+}
+
+body[data-theme='dark'] .provider-logo {
+  background: var(--bg2);
+  border-color: var(--line2);
+}
+
+.provider-logo-glyph {
+  display: block;
+  width: 16px;
+  height: 16px;
 }
 
 .provider-logo-mono {
-  display: inline-block;
   background: currentColor;
-  color: var(--fg2);
   -webkit-mask: center / contain no-repeat;
   mask: center / contain no-repeat;
 }
 
 .provider-logo-letter {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--bg2);
-  color: var(--fg2);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
+  line-height: 1;
+  color: var(--fg2);
 }
 
 .provider-id {
@@ -768,6 +781,19 @@ body .set-status--ok {
 }
 
 .prov-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* 图标对齐名称 + 状态两行，下面多出的提示行不把它往下带 */
+.prov-main .provider-logo {
+  margin-top: 3px;
+}
+
+.prov-text {
+  flex: 1;
   min-width: 0;
 }
 

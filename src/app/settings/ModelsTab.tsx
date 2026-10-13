@@ -11,28 +11,45 @@ import lmstudioLogo from '../../assets/logos/lmstudio.svg'
 import openrouterLogo from '../../assets/logos/openrouter.svg'
 import claudeLogo from '../../assets/logos/claude-color.svg'
 import geminiLogo from '../../assets/logos/gemini-color.svg'
+import deepseekLogo from '../../assets/logos/deepseek-color.svg'
+import siliconcloudLogo from '../../assets/logos/siliconcloud-color.svg'
+import aihubmixLogo from '../../assets/logos/aihubmix-color.svg'
 import { IconChip, IconRoute, Section } from './shared'
 
-export const MONO_LOGOS: Record<string, string> = {
+/** 单色图标跟随文字颜色（深浅主题都清楚），品牌色图标按原色显示 */
+const MONO_LOGOS: Record<string, string> = {
   openai: openaiLogo,
   ollama: ollamaLogo,
   lmstudio: lmstudioLogo,
   openrouter: openrouterLogo
 }
-export const COLOR_LOGOS: Record<string, string> = { anthropic: claudeLogo, gemini: geminiLogo }
+const COLOR_LOGOS: Record<string, string> = {
+  anthropic: claudeLogo,
+  gemini: geminiLogo,
+  deepseek: deepseekLogo,
+  siliconflow: siliconcloudLogo,
+  aihubmix: aihubmixLogo
+}
 
+/** 统一尺寸的圆角底块，里面放图标；没有图标的来源（自定义网关等）放首字母 */
 export function ProviderLogo({ slug, name }: { slug: string; name: string }): JSX.Element {
-  if (COLOR_LOGOS[slug]) return <img className="provider-logo" src={COLOR_LOGOS[slug]} alt="" />
-  if (MONO_LOGOS[slug]) {
-    // 构建后 SVG 会内联成含引号的 data URL，url() 里必须加引号，否则整条声明无效，只剩一个色块
-    return (
-      <span
-        className="provider-logo provider-logo-mono"
-        style={{ WebkitMaskImage: `url("${MONO_LOGOS[slug]}")`, maskImage: `url("${MONO_LOGOS[slug]}")` }}
-      />
-    )
-  }
-  return <span className="provider-logo provider-logo-letter">{name[0]}</span>
+  const mono = MONO_LOGOS[slug]
+  const color = COLOR_LOGOS[slug]
+  return (
+    <span className="provider-logo" aria-hidden>
+      {color ? (
+        <img className="provider-logo-glyph" src={color} alt="" />
+      ) : mono ? (
+        // 构建后 SVG 会内联成含引号的 data URL，url() 里必须加引号，否则整条声明无效，只剩一个色块
+        <span
+          className="provider-logo-glyph provider-logo-mono"
+          style={{ WebkitMaskImage: `url("${mono}")`, maskImage: `url("${mono}")` }}
+        />
+      ) : (
+        <span className="provider-logo-letter">{name.trim().charAt(0).toUpperCase() || '?'}</span>
+      )}
+    </span>
+  )
 }
 
 /* ---- 接入页：每个来源一行「名称 + 状态 + 一个按钮」，细节收进展开区 ---- */
@@ -126,19 +143,21 @@ export function ProviderRow({ p }: { p: ProviderView }): JSX.Element {
   return (
     <div className={open ? 'prov-row is-open' : 'prov-row'}>
       <div className="prov-main">
-        <div className="prov-title">
-          <ProviderLogo slug={p.slug} name={p.name} />
-          <span className="prov-name">{p.name}</span>
+        <ProviderLogo slug={p.slug} name={p.name} />
+        <div className="prov-text">
+          <div className="prov-title">
+            <span className="prov-name">{p.name}</span>
+          </div>
+          <div className="prov-state">
+            <span className={ready ? 'prov-dot is-ready' : 'prov-dot'} aria-hidden />
+            <span className={ready ? 'prov-state-text is-ready' : 'prov-state-text'}>{stateText}</span>
+            {bound && <span className="prov-state-sep">· {t('set.prov.via', { name: bound })}</span>}
+            <span className="prov-url" title={p.baseUrl}>
+              · {p.baseUrl}
+            </span>
+          </div>
+          {builtinLocal && detected !== null && !detectedEntry && <div className="set-row-desc">{t('set.local-hint')}</div>}
         </div>
-        <div className="prov-state">
-          <span className={ready ? 'prov-dot is-ready' : 'prov-dot'} aria-hidden />
-          <span className={ready ? 'prov-state-text is-ready' : 'prov-state-text'}>{stateText}</span>
-          {bound && <span className="prov-state-sep">· {t('set.prov.via', { name: bound })}</span>}
-          <span className="prov-url" title={p.baseUrl}>
-            · {p.baseUrl}
-          </span>
-        </div>
-        {builtinLocal && detected !== null && !detectedEntry && <div className="set-row-desc">{t('set.local-hint')}</div>}
       </div>
       <div className="prov-action">{primary}</div>
       {open && (
@@ -259,10 +278,12 @@ export function AddCustomEndpoint({ onDone, kind: initialKind }: { onDone: () =>
   return (
     <div className="prov-row is-open prov-row--new">
       <div className="prov-main">
-        <div className="prov-title">
-          <span className="prov-name">{t('set.add-custom')}</span>
+        <div className="prov-text">
+          <div className="prov-title">
+            <span className="prov-name">{t('set.add-custom')}</span>
+          </div>
+          <div className="set-row-desc">{error ?? t('set.add-custom-hint')}</div>
         </div>
-        <div className="set-row-desc">{error ?? t('set.add-custom-hint')}</div>
       </div>
       <div className="prov-action">
         <button className="set-btn" onClick={onDone}>

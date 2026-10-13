@@ -106,7 +106,7 @@ open release/mac-arm64/ReadArc.app
 
 ReadArc does not sell tokens and does not proxy your model requests. Open Settings (`⌘,`) and pick a different model for each task:
 
-- official services such as OpenAI, Anthropic, Gemini, DeepSeek, SiliconFlow and OpenRouter;
+- official services such as OpenAI, Anthropic, Gemini, DeepSeek, SiliconFlow, OpenRouter and AiHubMix;
 - any OpenAI-compatible API, self-hosted gateway or compatible endpoint;
 - local models through Ollama or LM Studio, for offline use or sensitive material.
 
