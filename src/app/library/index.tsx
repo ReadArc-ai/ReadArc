@@ -4,7 +4,19 @@ import type { PaperRow } from '../../../shared/models'
 import { useApp } from '../../store/app'
 import { confirmDialog } from '../../store/confirm'
 import { usePaper } from '../../store/paper'
-import { useLibrary, filterByCollection, filterByQuery, continueReading, type Collection } from '../../store/library'
+import {
+  useLibrary,
+  filterByCollection,
+  filterByQuery,
+  filterByTag,
+  continueReading,
+  sortPapers,
+  tagCounts,
+  type Collection
+} from '../../store/library'
+import type { LibSort } from '../../../shared/ipc'
+import { IconEdit, IconPin } from '../shell/icons'
+import { PaperEditDialog } from './PaperEditDialog'
 import { tNow, useT, type I18nKey } from '../../i18n'
 import { errText } from '../../lib/errors'
 import { Markdown } from '../../lib/md'
@@ -168,9 +180,42 @@ function Cover({ p, active }: { p: PaperRow; active: boolean }): JSX.Element {
   )
 }
 
+/** 卡片 / 行上的标签：最多显示 3 个，其余折成 +N */
+function TagChips({ tags, max = 3 }: { tags?: string[]; max?: number }): JSX.Element | null {
+  if (!tags || tags.length === 0) return null
+  return (
+    <span className="lib-tags">
+      {tags.slice(0, max).map((tag) => (
+        <span key={tag} className="lib-tag">
+          {tag}
+        </span>
+      ))}
+      {tags.length > max && <span className="lib-tag lib-tag--more">+{tags.length - max}</span>}
+    </span>
+  )
+}
+
+function EditButton({ p }: { p: PaperRow }): JSX.Element {
+  const t = useT()
+  return (
+    <span
+      className="lib-edit"
+      title={t('lib.edit-paper')}
+      onClick={(e) => {
+        e.stopPropagation()
+        useLibrary.getState().setEditing(p.id)
+      }}
+    >
+      <IconEdit />
+    </span>
+  )
+}
+
 function CoverGrid({ papers }: { papers: PaperRow[] }): JSX.Element {
   const currentId = usePaper((s) => s.bundle?.paper.id)
-  const shelf = continueReading(papers)
+  // 「继续读」书架始终按最近打开，不跟着当前排序和置顶走
+  const opened = (p: PaperRow): number => p.last_opened_at ?? p.added_at
+  const shelf = continueReading([...papers].sort((a, b) => opened(b) - opened(a)))
   const t = useT()
 
   return (
@@ -212,6 +257,7 @@ function CoverGrid({ papers }: { papers: PaperRow[] }): JSX.Element {
               onClick={() => openPaper(p.id)}
               onContextMenu={(e) => onCardMenu(e, p.id)}
             >
+              <EditButton p={p} />
               <span
                 className="lib-del"
                 title={t('lib.delete-paper')}
@@ -231,9 +277,15 @@ function CoverGrid({ papers }: { papers: PaperRow[] }): JSX.Element {
                 </span>
               )}
               <span className="lib-card-status" style={{ color: status.color }}>
+                {p.pinned_at && (
+                  <span className="lib-pin lib-pin--inline" title={t('lib.pinned')}>
+                    <IconPin />
+                  </span>
+                )}
                 {status.text}
                 {transLabel(p) && <span className="lib-trans-tag">{transLabel(p)}</span>}
               </span>
+              <TagChips tags={p.tags} max={2} />
             </button>
           )
         })}
@@ -272,8 +324,14 @@ function ListView({ papers }: { papers: PaperRow[] }): JSX.Element {
                 <span className="lib-dot" style={{ background: status.color }} />
               </td>
               <td className="lib-td-title">
+                {p.pinned_at && (
+                  <span className="lib-pin lib-pin--inline" title={t('lib.pinned')}>
+                    <IconPin />
+                  </span>
+                )}
                 {p.title}
                 {p.title_zh && <span className="lib-td-zh">{p.title_zh}</span>}
+                <TagChips tags={p.tags} />
               </td>
               {showAuthors && (
                 <td className="lib-td-dim">
@@ -299,6 +357,7 @@ function ListView({ papers }: { papers: PaperRow[] }): JSX.Element {
                 ) : null}
               </td>
               <td className="lib-td-del">
+                <EditButton p={p} />
                 <span
                   className="lib-del"
                   title={t('lib.delete-paper')}
@@ -318,6 +377,13 @@ function ListView({ papers }: { papers: PaperRow[] }): JSX.Element {
   )
 }
 
+const SORTS: { id: LibSort; label: I18nKey }[] = [
+  { id: 'opened', label: 'lib.sort.opened' },
+  { id: 'added', label: 'lib.sort.added' },
+  { id: 'title', label: 'lib.sort.title' },
+  { id: 'year', label: 'lib.sort.year' }
+]
+
 const COLLECTIONS: { id: Collection; label: I18nKey }[] = [
   { id: 'all', label: 'lib.filter.all' },
   { id: 'unread', label: 'lib.filter.unread' },
@@ -326,7 +392,7 @@ const COLLECTIONS: { id: Collection; label: I18nKey }[] = [
 ]
 
 export function LibraryScreen(): JSX.Element {
-  const { papers, collection, load, setCollection, loadError } = useLibrary()
+  const { papers, collection, load, setCollection, loadError, sort, setSort, tag, setTag } = useLibrary()
   const libView = useApp((s) => s.libView)
   const setLibView = useApp((s) => s.setLibView)
   // 窄窗口下搜索框只剩 96px，长提示会被截成「Search yo」，换短的
@@ -340,17 +406,23 @@ export function LibraryScreen(): JSX.Element {
     void load()
   }, [load])
 
-  // 右键菜单里的「删除论文…」回到既有确认流程
-  useEffect(
-    () =>
-      window.readarc.onPaperMenuDelete((paperId) => {
-        const p = useLibrary.getState().papers.find((x) => x.id === paperId)
-        if (p) void confirmDelete(p)
-      }),
-    []
-  )
+  // 右键菜单里的「删除论文…」回到既有确认流程；「编辑信息…」打开编辑框；切换置顶后刷新
+  useEffect(() => {
+    const offDelete = window.readarc.onPaperMenuDelete((paperId) => {
+      const p = useLibrary.getState().papers.find((x) => x.id === paperId)
+      if (p) void confirmDelete(p)
+    })
+    const offEdit = window.readarc.onPaperMenuEdit((paperId) => useLibrary.getState().setEditing(paperId))
+    const offPin = window.readarc.onPaperPinnedChanged(() => void useLibrary.getState().load())
+    return () => {
+      offDelete()
+      offEdit()
+      offPin()
+    }
+  }, [])
 
-  const filtered = filterByQuery(filterByCollection(papers, collection), query)
+  const filtered = sortPapers(filterByQuery(filterByTag(filterByCollection(papers, collection), tag), query), sort)
+  const tags = tagCounts(papers)
 
   const pickImport = (): void => {
     void usePaper.getState().pickAndImport()
@@ -379,6 +451,22 @@ export function LibraryScreen(): JSX.Element {
               </button>
             )
           })}
+          {tags.length > 0 && (
+            <>
+              <div className="lib-section-label lib-section-label--tags">{t('lib.tags')}</div>
+              {tags.map(({ tag: name, count }) => (
+                <button
+                  key={name}
+                  className="lib-side-item"
+                  style={tag === name ? { background: 'var(--bg2)', color: 'var(--fg)' } : undefined}
+                  onClick={() => setTag(tag === name ? null : name)}
+                >
+                  <span className="lib-side-tag"># {name}</span>
+                  <span className="lib-side-count">{count}</span>
+                </button>
+              ))}
+            </>
+          )}
         </aside>
         <div className="lib-main">
           <header className="screen-header">
@@ -401,6 +489,13 @@ export function LibraryScreen(): JSX.Element {
                 </button>
               )}
             </span>
+            <select className="set-select lib-sort" value={sort} title={t('lib.sort.tip')} onChange={(e) => setSort(e.target.value as LibSort)}>
+              {SORTS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {t(s.label)}
+                </option>
+              ))}
+            </select>
             <div className="seg-control">
               <button
                 className="seg-item"
@@ -440,6 +535,8 @@ export function LibraryScreen(): JSX.Element {
                   </>
                 ) : query ? (
                   <h2>{t('lib.empty.search', { q: query })}</h2>
+                ) : tag ? (
+                  <h2>{t('lib.empty.tag')}</h2>
                 ) : (
                   <h2>{t('lib.empty.filter')}</h2>
                 )}
@@ -452,6 +549,7 @@ export function LibraryScreen(): JSX.Element {
           </div>
         </div>
       </div>
+      <PaperEditDialog />
     </section>
   )
 }

@@ -65,7 +65,14 @@ const messages = {
   'notes.invalid': { zh: '模型 {model} 未生成符合要求的{language}笔记。请重试或更换模型。', en: 'Model {model} did not produce valid notes in {language}. Try again or choose another model.' },
   'menu.finder': { zh: '在 Finder 中显示', en: 'Show in Finder' },
   'menu.folder': { zh: '打开所在目录', en: 'Open containing folder' },
-  'menu.delete': { zh: '删除论文…', en: 'Delete paper…' }
+  'menu.delete': { zh: '删除论文…', en: 'Delete paper…' },
+  'menu.edit': { zh: '编辑信息…', en: 'Edit info…' },
+  'menu.pin': { zh: '置顶', en: 'Pin to top' },
+  'menu.unpin': { zh: '取消置顶', en: 'Unpin' },
+  'meta.need-id': { zh: '先填 DOI 或 arXiv 号', en: 'Enter a DOI or arXiv ID first' },
+  'meta.not-found': { zh: '没找到这篇论文，检查一下编号', en: 'No paper found for this ID. Check the number.' },
+  'meta.lookup-failed': { zh: '暂时连不上 arXiv 或 Semantic Scholar，稍后再试', en: 'Could not reach arXiv or Semantic Scholar. Try again later.' },
+  'meta.invalid': { zh: '标题不能为空', en: 'Title is required' }
 } satisfies Record<string, Record<Lang, string>>
 
 export function uiText(key: keyof typeof messages, vars?: Record<string, string | number>): string {

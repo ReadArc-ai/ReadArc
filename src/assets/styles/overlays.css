@@ -479,3 +479,133 @@
   outline: none;
   box-shadow: 0 0 0 3px var(--acc-soft);
 }
+
+/* ---- 编辑论文信息 ---- */
+.meta-dlg {
+  width: 520px;
+}
+
+.meta-form {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px 10px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.meta-label {
+  font-size: 11.5px;
+  color: var(--fg3);
+  text-align: right;
+}
+
+.meta-label--inline {
+  flex: none;
+  margin-left: 4px;
+}
+
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* 压过 .set-input 的固定宽度：编辑框里输入框撑满一列 */
+.meta-form .meta-input {
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  font-size: 12px;
+}
+
+.meta-form .meta-input--year {
+  flex: none;
+  width: 64px;
+}
+
+.meta-input--mono {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.meta-row .set-btn {
+  flex: none;
+}
+
+.meta-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 3px 6px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  cursor: text;
+}
+
+.meta-tags:focus-within {
+  border-color: var(--acc);
+}
+
+.meta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px 0 7px;
+  border-radius: 999px;
+  background: var(--bg1);
+  border: 1px solid var(--line2);
+  color: var(--fg);
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.meta-tag-x {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  color: var(--fg3);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.meta-tag-x:hover {
+  color: var(--fg);
+  background: var(--bg3);
+}
+
+.meta-tag-input {
+  flex: 1 1 80px;
+  min-width: 80px;
+  height: 20px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--fg);
+  font-size: 12px;
+}
+
+.meta-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.meta-foot .dlg-actions {
+  margin-top: 0;
+  margin-left: auto;
+}
+
+.meta-status {
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--fg3);
+}
+
+.meta-status.is-error {
+  color: var(--vi);
+}

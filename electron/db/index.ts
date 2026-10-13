@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3'
 import { sqliteDriver } from './driver'
 import { MIGRATIONS } from './schema'
-import type { BlockRow, PaperRow } from '../../shared/models'
+import type { BlockRow, PaperMetaPatch, PaperRow } from '../../shared/models'
 import { preservesInlineContent } from '../../shared/translation-integrity'
 import { parseInlines } from '../../shared/inline-formula'
 
@@ -66,7 +66,8 @@ export function upsertPaper(
      VALUES (@id, @file_path, @title, @title_zh, @authors, @year, @source, @arxiv_id, @doi, @status, @progress, @last_section, @scroll_position, @added_at, @last_opened_at)
      ON CONFLICT(id) DO UPDATE SET
        file_path = @file_path,
-       title = COALESCE(@title, title)  -- 重复导入可修正启发式标题（解析改进后生效）`
+       -- 重复导入可修正启发式标题（解析改进后生效）；用户手改过的标题不动
+       title = CASE WHEN meta_edited = 1 THEN title ELSE COALESCE(@title, title) END`
   ).run({ ...PAPER_DEFAULTS, ...paper })
 }
 
@@ -101,8 +102,43 @@ export function enrichPaperMeta(
        source   = COALESCE(@source, source),
        doi      = COALESCE(@doi, doi),
        arxiv_id = COALESCE(@arxiv_id, arxiv_id)
-     WHERE id = @id`
+     WHERE id = @id AND meta_edited = 0`
   ).run({ title: null, authors: null, year: null, source: null, doi: null, arxiv_id: null, ...meta, id })
+}
+
+/** 用户在编辑框里改的论文信息（已由 sanitizeMetaPatch 校验）。整体覆盖，并标记为手改：自动流程此后不再覆盖 */
+export function updatePaperMeta(db: Database.Database, id: string, meta: PaperMetaPatch): boolean {
+  return db.transaction(() => {
+    const changes = db
+      .prepare(
+        `UPDATE papers SET title = @title, title_zh = @title_zh, authors = @authors, year = @year,
+           source = @source, doi = @doi, arxiv_id = @arxiv_id, meta_edited = 1
+         WHERE id = @id`
+      )
+      .run({
+        id,
+        title: meta.title,
+        title_zh: meta.title_zh,
+        authors: meta.authors.length > 0 ? JSON.stringify(meta.authors) : null,
+        year: meta.year,
+        source: meta.source,
+        doi: meta.doi,
+        arxiv_id: meta.arxiv_id
+      }).changes
+    if (changes === 0) return false
+    db.prepare('DELETE FROM paper_tags WHERE paper_id = ?').run(id)
+    const add = db.prepare('INSERT OR IGNORE INTO paper_tags (paper_id, tag) VALUES (?, ?)')
+    for (const tag of meta.tags) add.run(id, tag)
+    return true
+  })()
+}
+
+export function setPaperPinned(db: Database.Database, id: string, pinned: boolean): boolean {
+  return db.prepare('UPDATE papers SET pinned_at = ? WHERE id = ?').run(pinned ? Date.now() : null, id).changes > 0
+}
+
+export function paperTags(db: Database.Database, id: string): string[] {
+  return (db.prepare('SELECT tag FROM paper_tags WHERE paper_id = ? ORDER BY tag').all(id) as { tag: string }[]).map((r) => r.tag)
 }
 
 export function findPaperByIds(
@@ -302,7 +338,7 @@ export function listPapers(
   glossaryVersion: number,
   promptVersion: number
 ): PaperRow[] {
-  return db
+  const rows = db
     .prepare(
       `SELECT p.*,
          (SELECT COUNT(*) FROM blocks b
@@ -313,10 +349,21 @@ export function listPapers(
               AND t.glossary_version = @glossaryVersion
               AND t.prompt_version = @promptVersion
               AND trim(t.text) <> '' AND t.text NOT LIKE '%think>%'
-              AND inline_content_matches(b2.text, t.text)) AS trans_done
+              AND inline_content_matches(b2.text, t.text)) AS trans_done,
+         (SELECT json_group_array(tag) FROM (SELECT tag FROM paper_tags WHERE paper_id = p.id ORDER BY tag)) AS tags_json
        FROM papers p ORDER BY COALESCE(p.last_opened_at, p.added_at) DESC`
     )
-    .all({ glossaryVersion, promptVersion }) as PaperRow[]
+    .all({ glossaryVersion, promptVersion }) as (PaperRow & { tags_json: string | null })[]
+  return rows.map(({ tags_json, ...p }) => ({ ...p, tags: parseTags(tags_json) }))
+}
+
+function parseTags(json: string | null): string[] {
+  try {
+    const v = JSON.parse(json ?? '[]') as unknown
+    return Array.isArray(v) ? v.filter((t): t is string => typeof t === 'string') : []
+  } catch {
+    return []
+  }
 }
 
 /** FTS5 检索，对话面板的上下文构造用（结构摘要 + 命中的 5–8 块）。 */

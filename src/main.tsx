@@ -7,6 +7,7 @@ import { usePaper } from './store/paper'
 import { useChat } from './store/chat'
 import { useSearch } from './store/search'
 import { useGen } from './store/gen'
+import { useLibrary } from './store/library'
 import { ErrorBoundary } from './lib/ErrorBoundary'
 import { installTooltips } from './lib/tooltips'
 import { isBuiltinPersona, type CustomPersona } from '../shared/models'
@@ -38,6 +39,9 @@ async function bootstrap(): Promise<void> {
       panelHeight: settings.sidebar?.panelHeight ?? null,
       panelDock: settings.panelDock === 'bottom' ? 'bottom' : 'right'
     })
+    // settings.json 可能被手改坏：不认识的排序回到最近打开
+    const libSort = settings.libSort
+    useLibrary.setState({ sort: libSort === 'added' || libSort === 'title' || libSort === 'year' ? libSort : 'opened' })
     // 对话讲法全局记住；settings.json 里的值来路不明（手改坏了、指向已删的自定义讲法）时回到默认讲法
     const customPersonas = (Array.isArray(settings.chatPersonas) ? settings.chatPersonas : [])
       .filter(

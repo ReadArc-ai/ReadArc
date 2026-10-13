@@ -143,3 +143,23 @@ export function IconCrop(): JSX.Element {
     </svg>
   )
 }
+
+/** 图钉：论文置顶 */
+export function IconPin(): JSX.Element {
+  return (
+    <svg viewBox="0 0 16 16" {...p} aria-hidden>
+      <path d="M9.6 1.8 14.2 6.4l-2.4 1-2.6 2.6.4 2.6-1.5 1.5-6.1-6.1 1.5-1.5 2.6.4 2.6-2.6Z" />
+      <path d="M5.2 10.8 1.8 14.2" />
+    </svg>
+  )
+}
+
+/** 铅笔：编辑信息 */
+export function IconEdit(): JSX.Element {
+  return (
+    <svg viewBox="0 0 16 16" {...p} aria-hidden>
+      <path d="M11 2.3 13.7 5 5.8 12.9 2.5 13.5l.6-3.3Z" />
+      <path d="M9.4 3.9 12.1 6.6" />
+    </svg>
+  )
+}

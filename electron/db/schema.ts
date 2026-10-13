@@ -157,4 +157,15 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE papers ADD COLUMN layout_version INTEGER NOT NULL DEFAULT 0;
   `,
+  // 论文库组织：用户编辑过元数据（自动流程不再覆盖）、置顶时间（NULL = 未置顶）、自由标签
+  `
+  ALTER TABLE papers ADD COLUMN meta_edited INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE papers ADD COLUMN pinned_at INTEGER;
+  CREATE TABLE paper_tags (
+    paper_id TEXT NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
+    tag      TEXT NOT NULL,
+    PRIMARY KEY (paper_id, tag)
+  );
+  CREATE INDEX idx_paper_tags_tag ON paper_tags(tag);
+  `,
 ]

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PaperRow } from '../../shared/models'
-import { filterByQuery } from './library'
+import { filterByQuery, filterByTag, sortPapers, tagCounts } from './library'
 
 const paper = (over: Partial<PaperRow>): PaperRow =>
   ({
@@ -43,3 +43,38 @@ describe('论文库内搜索', () => {
     expect(filterByQuery(papers, 'zzz')).toHaveLength(0)
   })
 })
+
+describe('论文库排序与标签', () => {
+  const papers = [
+    paper({ id: 'a', title: 'beta', year: 2020, added_at: 3, last_opened_at: 10, tags: ['NLP'] }),
+    paper({ id: 'b', title: 'Alpha', year: null, added_at: 1, last_opened_at: 30, tags: ['NLP', 'CV'] }),
+    paper({ id: 'c', title: 'gamma 10', year: 2024, added_at: 2, last_opened_at: null }),
+    paper({ id: 'd', title: 'gamma 9', year: 2018, added_at: 4, last_opened_at: 20 })
+  ]
+  const ids = (ps: PaperRow[]): string => ps.map((p) => p.id).join('')
+
+  it('四种排序', () => {
+    expect(ids(sortPapers(papers, 'opened'))).toBe('bdac')
+    expect(ids(sortPapers(papers, 'added'))).toBe('dacb')
+    // 标题不分大小写，数字按数值（gamma 9 在 gamma 10 前）
+    expect(ids(sortPapers(papers, 'title'))).toBe('badc')
+    // 没有年份的排最后
+    expect(ids(sortPapers(papers, 'year'))).toBe('cadb')
+  })
+
+  it('置顶的总在最前，后置顶的更靠前', () => {
+    const pinned = papers.map((p) => (p.id === 'c' ? { ...p, pinned_at: 100 } : p.id === 'a' ? { ...p, pinned_at: 200 } : p))
+    expect(ids(sortPapers(pinned, 'title'))).toBe('acbd')
+  })
+
+  it('按标签筛选、统计，搜索也命中标签', () => {
+    expect(ids(filterByTag(papers, 'CV'))).toBe('b')
+    expect(ids(filterByTag(papers, null))).toBe('abcd')
+    expect(tagCounts(papers)).toEqual([
+      { tag: 'CV', count: 1 },
+      { tag: 'NLP', count: 2 }
+    ])
+    expect(ids(filterByQuery(papers, 'nlp'))).toBe('ab')
+  })
+})
+

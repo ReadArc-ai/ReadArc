@@ -5,7 +5,9 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { IPC } from '../../shared/ipc'
 import type { ProgressUpdate } from '../../shared/models'
-import { getPaper } from '../db'
+import { getPaper, paperTags, setPaperPinned, updatePaperMeta } from '../db'
+import { sanitizeMetaPatch } from '../../shared/paper-meta'
+import { lookupPaperMeta } from '../library/meta-lookup'
 import { figureFileName } from '../library/import'
 import {
   allPapers,
@@ -57,6 +59,16 @@ export function registerLibraryIpc(): void {
     const paper = getPaper(appDb(), paperId)
     if (!paper) return
     const menu = Menu.buildFromTemplate([
+      // 编辑框在渲染端，交回去打开
+      { label: uiText('menu.edit'), click: () => e.sender.send(IPC.paperMenuEdit, paperId) },
+      {
+        label: paper.pinned_at ? uiText('menu.unpin') : uiText('menu.pin'),
+        click: () => {
+          setPaperPinned(appDb(), paperId, !paper.pinned_at)
+          e.sender.send(IPC.paperPinnedChanged, paperId)
+        }
+      },
+      { type: 'separator' },
       {
         label: process.platform === 'darwin' ? uiText('menu.finder') : uiText('menu.folder'),
         click: () => shell.showItemInFolder(paper.file_path)
@@ -68,6 +80,16 @@ export function registerLibraryIpc(): void {
     const win = BrowserWindow.fromWebContents(e.sender)
     menu.popup(win ? { window: win } : {})
   })
+  // 编辑论文信息：渲染端的输入不可信，写库前规整并校验（标题必填、长度与个数设上限）
+  ipcMain.handle(IPC.paperUpdateMeta, (_e, paperId: string, meta: unknown) => {
+    const clean = sanitizeMetaPatch(meta)
+    if (!clean) throw new Error(uiText('meta.invalid'))
+    if (!updatePaperMeta(appDb(), paperId, clean)) return null
+    const row = getPaper(appDb(), paperId)
+    return row ? { ...row, tags: paperTags(appDb(), paperId) } : null
+  })
+  ipcMain.handle(IPC.paperLookupMeta, (_e, input: { doi?: unknown; arxiv_id?: unknown }) => lookupPaperMeta(input ?? {}))
+  ipcMain.handle(IPC.paperSetPinned, (_e, paperId: string, pinned: boolean) => setPaperPinned(appDb(), paperId, pinned === true))
   ipcMain.handle(IPC.paperDelete, (_e, paperId: string) => {
     // 先停翻译：否则在途批次会继续为一篇已删除的论文调用模型（真金白银），
     // 并在删除之后把译文写回来

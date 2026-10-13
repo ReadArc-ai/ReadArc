@@ -3,6 +3,8 @@
 export type ThemeMode = 'system' | 'dark' | 'light'
 export type Lang = 'zh' | 'en'
 export type LibView = 'cover' | 'list'
+/** 论文库排序：最近打开 / 加入时间 / 标题 / 年份（置顶的论文总在最前） */
+export type LibSort = 'opened' | 'added' | 'title' | 'year'
 
 import type { TargetLang } from './lang'
 import type {
@@ -22,6 +24,8 @@ import type {
   PaperBundle,
   PaperNotes,
   PaperRow,
+  PaperMetaPatch,
+  PaperMetaLookup,
   PaperSummary,
   ProgressUpdate,
   ProviderSaveInput,
@@ -46,6 +50,8 @@ export interface PersistedSettings {
   /** 翻译 / 摘要 / 笔记的目标语言；缺省跟界面语言 */
   targetLang?: TargetLang
   libView: LibView
+  /** 论文库排序；缺省最近打开 */
+  libSort?: LibSort
   windowBounds?: { x: number; y: number; width: number; height: number }
   /** [P1] 开机即读：上次打开的论文 */
   lastPaperId?: string | null
@@ -108,6 +114,11 @@ export const IPC = {
   paperDelete: 'paper:delete',
   paperMenu: 'paper:menu',
   paperMenuDelete: 'paper:menu-delete',
+  paperMenuEdit: 'paper:menu-edit',
+  paperUpdateMeta: 'paper:update-meta',
+  paperLookupMeta: 'paper:lookup-meta',
+  paperSetPinned: 'paper:set-pinned',
+  paperPinnedChanged: 'paper:pinned-changed',
   paperProgress: 'paper:progress',
   paperFile: 'paper:file',
   pdfAsset: 'pdf:asset',
@@ -197,6 +208,15 @@ export interface ReadArcBridge {
   showPaperMenu(paperId: string): void
   /** 右键菜单里点了「删除论文…」：渲染端接手确认流程 */
   onPaperMenuDelete(cb: (paperId: string) => void): () => void
+  /** 右键菜单「编辑信息…」：渲染端打开编辑框 */
+  onPaperMenuEdit(cb: (paperId: string) => void): () => void
+  /** 保存编辑后的论文信息；返回更新后的论文行（含标签），论文不存在返回 null */
+  updatePaperMeta(paperId: string, meta: PaperMetaPatch): Promise<PaperRow | null>
+  /** 按 DOI / arXiv 号拉权威元数据（只读，不写库） */
+  lookupPaperMeta(input: { doi: string | null; arxiv_id: string | null }): Promise<PaperMetaLookup>
+  setPaperPinned(paperId: string, pinned: boolean): Promise<boolean>
+  /** 右键菜单里切换了置顶：渲染端刷新论文库 */
+  onPaperPinnedChanged(cb: (paperId: string) => void): () => void
   saveProgress(paperId: string, update: ProgressUpdate): void
   /** 论文原始字节（渲染进程画首页缩略图用） */
   paperFile(paperId: string): Promise<ArrayBuffer | null>

@@ -24,6 +24,34 @@ export interface PaperRow {
   /** 翻译进度（listPapers 附带；其他查询可缺省）：可译块总数 / 已译块数 */
   trans_total?: number
   trans_done?: number
+  /** 用户手改过论文信息：重新识别版面、重复导入都不再覆盖标题等字段 */
+  meta_edited?: number
+  /** 置顶时间（毫秒）；未置顶为 null。置顶的论文在任何排序下都排在前面 */
+  pinned_at?: number | null
+  /** 标签（listPapers 附带，按字母序） */
+  tags?: string[]
+}
+
+/** 编辑论文信息：整体覆盖。作者与标签是数组，空串一律存成 null */
+export interface PaperMetaPatch {
+  title: string
+  title_zh: string | null
+  authors: string[]
+  year: number | null
+  source: string | null
+  doi: string | null
+  arxiv_id: string | null
+  tags: string[]
+}
+
+/** 按 DOI / arXiv 号从公开来源拉到的元数据；拉不到的字段为 null */
+export interface PaperMetaLookup {
+  title: string | null
+  authors: string[]
+  year: number | null
+  source: string | null
+  doi: string | null
+  arxiv_id: string | null
 }
 
 export interface BlockRow {

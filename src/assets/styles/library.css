@@ -431,3 +431,118 @@
 .chat-quote button:hover {
   color: var(--fg);
 }
+
+/* ---- 论文库组织：编辑、置顶、标签、排序 ---- */
+
+/* 编辑按钮：和删除一样悬停才现身，排在删除左边 */
+.lib-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  color: var(--fg3);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.12s ease;
+}
+
+.lib-edit svg {
+  width: 12px;
+  height: 12px;
+}
+
+.lib-edit:hover {
+  color: var(--fg);
+  background: var(--bg3);
+}
+
+.lib-card .lib-edit {
+  position: absolute;
+  top: 6px;
+  right: 30px;
+  z-index: 2;
+  background: var(--bg2);
+}
+
+.lib-card:hover .lib-edit,
+.lib-table tbody tr:hover .lib-edit {
+  opacity: 1;
+}
+
+.lib-td-del {
+  white-space: nowrap;
+}
+
+/* 置顶标记：卡片状态行与列表标题前常驻（不压在封面上，封面左上角是来源标签） */
+.lib-pin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--acc);
+}
+
+.lib-pin svg {
+  width: 12px;
+  height: 12px;
+}
+
+.lib-pin--inline {
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+
+.lib-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.lib-td-title .lib-tags {
+  margin-top: 4px;
+}
+
+.lib-tag {
+  max-width: 120px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--bg2);
+  color: var(--fg2);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lib-tag--more {
+  color: var(--fg3);
+}
+
+.lib-section-label--tags {
+  margin-top: 14px;
+}
+
+.lib-side-tag {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lib-sort {
+  width: auto;
+  height: 28px;
+}
+
+.lib-card-status .lib-pin svg {
+  width: 10px;
+  height: 10px;
+}
+
+.lib-card-status .lib-pin--inline {
+  margin-right: 3px;
+}

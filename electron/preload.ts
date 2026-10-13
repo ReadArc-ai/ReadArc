@@ -6,6 +6,7 @@ import type {
   ChatDeltaEvent,
   ChatHistoryItem,
   ImportProgressEvent,
+  PaperMetaPatch,
   ProgressUpdate,
   ProviderSaveInput,
   SearchProgressEvent,
@@ -55,6 +56,19 @@ const bridge: ReadArcBridge = {
     const listener = (_e: unknown, paperId: string): void => cb(paperId)
     ipcRenderer.on(IPC.paperMenuDelete, listener)
     return () => ipcRenderer.removeListener(IPC.paperMenuDelete, listener)
+  },
+  onPaperMenuEdit: (cb: (paperId: string) => void) => {
+    const listener = (_e: unknown, paperId: string): void => cb(paperId)
+    ipcRenderer.on(IPC.paperMenuEdit, listener)
+    return () => ipcRenderer.removeListener(IPC.paperMenuEdit, listener)
+  },
+  updatePaperMeta: (paperId: string, meta: PaperMetaPatch) => ipcRenderer.invoke(IPC.paperUpdateMeta, paperId, meta),
+  lookupPaperMeta: (input: { doi: string | null; arxiv_id: string | null }) => ipcRenderer.invoke(IPC.paperLookupMeta, input),
+  setPaperPinned: (paperId: string, pinned: boolean) => ipcRenderer.invoke(IPC.paperSetPinned, paperId, pinned),
+  onPaperPinnedChanged: (cb: (paperId: string) => void) => {
+    const listener = (_e: unknown, paperId: string): void => cb(paperId)
+    ipcRenderer.on(IPC.paperPinnedChanged, listener)
+    return () => ipcRenderer.removeListener(IPC.paperPinnedChanged, listener)
   },
   saveProgress: (paperId: string, update: ProgressUpdate) =>
     ipcRenderer.send(IPC.paperProgress, paperId, update),

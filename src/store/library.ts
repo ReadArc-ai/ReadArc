@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import type { PaperRow } from '../../shared/models'
+import type { PaperMetaPatch, PaperRow } from '../../shared/models'
+import type { LibSort } from '../../shared/ipc'
 import { ensureThumbnail } from '../lib/thumbnails'
 import { usePaper } from './paper'
 import { errText } from '../lib/errors'
@@ -11,12 +12,23 @@ interface LibraryState {
   /** 读库失败（多半是数据库损坏）：界面必须说出来，不能装作是空库 */
   loadError: string | null
   collection: Collection
+  sort: LibSort
+  /** 侧栏选中的标签；null = 不按标签筛 */
+  tag: string | null
+  /** 正在编辑信息的论文 id（编辑框开着） */
+  editing: string | null
   /** paperId → 首页缩略图 data URL（无则回退纹理占位） */
   thumbs: Record<string, string>
   /** 某篇封面进入视野：确保它的缩略图生成 */
   ensureThumb(paperId: string): void
   load(): Promise<void>
   setCollection(c: Collection): void
+  setSort(sort: LibSort): void
+  setTag(tag: string | null): void
+  setEditing(paperId: string | null): void
+  /** 保存编辑后的信息：库列表与正在阅读的那篇同步更新 */
+  updateMeta(paperId: string, meta: PaperMetaPatch): Promise<void>
+  setPinned(paperId: string, pinned: boolean): Promise<void>
   /** 删除论文：DB+应用内文件；若正在阅读则关掉阅读器。笔记文件保留 */
   remove(paperId: string): Promise<void>
 }
@@ -25,6 +37,9 @@ export const useLibrary = create<LibraryState>((set, get) => ({
   papers: [],
   loadError: null,
   collection: 'all',
+  sort: 'opened',
+  tag: null,
+  editing: null,
   thumbs: {},
 
   load: async () => {
@@ -37,7 +52,9 @@ export const useLibrary = create<LibraryState>((set, get) => ({
       set({ loadError: errText(err) })
       return
     }
-    set({ papers, loadError: null })
+    // 选中的标签已经没有论文了（最后一篇被删或改掉了这个标签）：回到不筛选
+    const tag = get().tag
+    set({ papers, loadError: null, tag: tag && papers.some((p) => p.tags?.includes(tag)) ? tag : null })
   },
 
   /**
@@ -54,6 +71,30 @@ export const useLibrary = create<LibraryState>((set, get) => ({
 
   setCollection: (collection) => set({ collection }),
 
+  setSort: (sort) => {
+    set({ sort })
+    window.readarc?.patchSettings({ libSort: sort })
+  },
+
+  setTag: (tag) => set({ tag }),
+
+  setEditing: (editing) => set({ editing }),
+
+  updateMeta: async (paperId, meta) => {
+    const row = await window.readarc.updatePaperMeta(paperId, meta)
+    if (!row) return
+    set((s) => ({ papers: s.papers.map((p) => (p.id === paperId ? { ...p, ...row } : p)) }))
+    // 正在阅读的就是这篇：标题、作者跟着变（窗口标题、笔记标题都读 bundle.paper）
+    const { bundle } = usePaper.getState()
+    if (bundle?.paper.id === paperId) usePaper.setState({ bundle: { ...bundle, paper: { ...bundle.paper, ...row } } })
+    await get().load()
+  },
+
+  setPinned: async (paperId, pinned) => {
+    await window.readarc.setPaperPinned(paperId, pinned)
+    await get().load()
+  },
+
   remove: async (paperId) => {
     const ok = await window.readarc.deletePaper(paperId)
     if (!ok) return
@@ -69,7 +110,7 @@ export function filterByQuery(papers: PaperRow[], query: string): PaperRow[] {
   const q = query.trim().toLowerCase()
   if (!q) return papers
   return papers.filter((p) =>
-    [p.title, p.title_zh, p.authors, p.source, p.arxiv_id, p.year != null ? String(p.year) : null]
+    [p.title, p.title_zh, p.authors, p.source, p.arxiv_id, p.doi, p.year != null ? String(p.year) : null, ...(p.tags ?? [])]
       .filter(Boolean)
       .some((field) => String(field).toLowerCase().includes(q))
   )
@@ -86,6 +127,45 @@ export function filterByCollection(papers: PaperRow[], c: Collection): PaperRow[
     default:
       return papers
   }
+}
+
+export function filterByTag(papers: PaperRow[], tag: string | null): PaperRow[] {
+  return tag ? papers.filter((p) => p.tags?.includes(tag)) : papers
+}
+
+/** 库里出现过的标签与篇数，按名称排序（中英文混排按本地化规则） */
+export function tagCounts(papers: PaperRow[]): { tag: string; count: number }[] {
+  const counts = new Map<string, number>()
+  for (const p of papers) for (const t of p.tags ?? []) counts.set(t, (counts.get(t) ?? 0) + 1)
+  return [...counts.entries()].map(([tag, count]) => ({ tag, count })).sort((a, b) => a.tag.localeCompare(b.tag))
+}
+
+const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
+
+/**
+ * 排序：置顶的永远在前（后置顶的更靠前），其余按所选字段。
+ * 标题按本地化规则；没有年份的排在有年份的后面；同值时按最近打开兜底，顺序稳定
+ */
+export function sortPapers(papers: PaperRow[], sort: LibSort): PaperRow[] {
+  const opened = (p: PaperRow): number => p.last_opened_at ?? p.added_at
+  const by = (a: PaperRow, b: PaperRow): number => {
+    switch (sort) {
+      case 'added':
+        return b.added_at - a.added_at
+      case 'title':
+        return collator.compare(a.title ?? '', b.title ?? '')
+      case 'year':
+        return (b.year ?? -Infinity) - (a.year ?? -Infinity) || 0
+      default:
+        return opened(b) - opened(a)
+    }
+  }
+  return [...papers].sort((a, b) => {
+    const pa = a.pinned_at ?? 0
+    const pb = b.pinned_at ?? 0
+    if (pa || pb) return pb - pa
+    return by(a, b) || opened(b) - opened(a)
+  })
 }
 
 /** 继续读书架：0 < 进度 < 100，最多 3 张。 */

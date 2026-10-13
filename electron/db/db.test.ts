@@ -7,7 +7,11 @@ import { migrateTranslationsBySimhash,
   getTranslation,
   listPapers,
   markStaleLayouts,
+  enrichPaperMeta,
   openDb,
+  paperTags,
+  setPaperPinned,
+  updatePaperMeta,
   putTranslation,
   recordProgress,
   replaceBlocks,
@@ -302,3 +306,61 @@ describe('版面解析版本', () => {
     db.close()
   })
 })
+
+describe('论文信息编辑与库内组织', () => {
+  const meta = {
+    title: 'Attention Is All You Need',
+    title_zh: '注意力就是全部',
+    authors: ['Ashish Vaswani', 'Noam Shazeer'],
+    year: 2017,
+    source: 'NeurIPS',
+    doi: null,
+    arxiv_id: '1706.03762',
+    tags: ['NLP', 'Transformer']
+  }
+
+  it('保存后字段与标签都落库，列表带出标签', () => {
+    expect(updatePaperMeta(db, fileHash, meta)).toBe(true)
+    const p = getPaper(db, fileHash)!
+    expect(p.title_zh).toBe('注意力就是全部')
+    expect(JSON.parse(p.authors!)).toEqual(['Ashish Vaswani', 'Noam Shazeer'])
+    expect(p.meta_edited).toBe(1)
+    expect(listPapers(db, 1, 1)[0].tags).toEqual(['NLP', 'Transformer'])
+    // 再保存一次是整体覆盖，去掉的标签不残留
+    updatePaperMeta(db, fileHash, { ...meta, tags: ['NLP'] })
+    expect(paperTags(db, fileHash)).toEqual(['NLP'])
+  })
+
+  it('论文不存在时什么也不写', () => {
+    expect(updatePaperMeta(db, 'missing', meta)).toBe(false)
+    expect(db.prepare('SELECT COUNT(*) AS n FROM paper_tags').get()).toEqual({ n: 0 })
+  })
+
+  it('手改过的标题，重复导入和版面重识别都不覆盖；检索补全也不覆盖', () => {
+    updatePaperMeta(db, fileHash, meta)
+    upsertPaper(db, { id: fileHash, file_path: '/papers/rasr.pdf', title: 'Heuristic Title', added_at: Date.now() })
+    enrichPaperMeta(db, fileHash, { title: 'From Search', source: 'arXiv' })
+    const p = getPaper(db, fileHash)!
+    expect(p.title).toBe('Attention Is All You Need')
+    expect(p.source).toBe('NeurIPS')
+  })
+
+  it('没手改过的论文照旧接受启发式标题修正', () => {
+    upsertPaper(db, { id: fileHash, file_path: '/papers/rasr.pdf', title: 'Better Title', added_at: Date.now() })
+    expect(getPaper(db, fileHash)!.title).toBe('Better Title')
+  })
+
+  it('置顶与取消置顶', () => {
+    expect(setPaperPinned(db, fileHash, true)).toBe(true)
+    expect(getPaper(db, fileHash)!.pinned_at).toBeGreaterThan(0)
+    setPaperPinned(db, fileHash, false)
+    expect(getPaper(db, fileHash)!.pinned_at).toBeNull()
+  })
+
+  it('删除论文时标签一并删掉', () => {
+    updatePaperMeta(db, fileHash, meta)
+    deletePaperData(db, fileHash)
+    expect(db.prepare('SELECT COUNT(*) AS n FROM paper_tags').get()).toEqual({ n: 0 })
+  })
+})
+
