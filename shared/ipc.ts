@@ -26,6 +26,9 @@ import type {
   PaperRow,
   PaperMetaPatch,
   PaperMetaLookup,
+  ProviderTestResult,
+  ArxivHtmlResult,
+  FlowUnitInput,
   PaperSummary,
   ProgressUpdate,
   ProviderSaveInput,
@@ -52,6 +55,8 @@ export interface PersistedSettings {
   libView: LibView
   /** 论文库排序；缺省最近打开 */
   libSort?: LibSort
+  /** 流式视图的来源：有 arXiv 网页版时用它（缺省），或者固定用 PDF 解析 */
+  flowSource?: 'arxiv' | 'pdf'
   windowBounds?: { x: number; y: number; width: number; height: number }
   /** [P1] 开机即读：上次打开的论文 */
   lastPaperId?: string | null
@@ -119,6 +124,10 @@ export const IPC = {
   paperLookupMeta: 'paper:lookup-meta',
   paperSetPinned: 'paper:set-pinned',
   paperPinnedChanged: 'paper:pinned-changed',
+  arxivHtml: 'arxiv:html',
+  libraryChanged: 'library:changed',
+  arxivAsset: 'arxiv:asset',
+  arxivTranslations: 'arxiv:translations',
   paperProgress: 'paper:progress',
   paperFile: 'paper:file',
   pdfAsset: 'pdf:asset',
@@ -135,6 +144,7 @@ export const IPC = {
   modelsSaveMain: 'models:save-main',
   networkTest: 'network:test',
   modelsDeleteProvider: 'models:delete-provider',
+  modelsTestProvider: 'models:test-provider',
   modelsList: 'models:list',
   translatePaper: 'translate:paper',
   translateStop: 'translate:stop',
@@ -240,6 +250,8 @@ export interface ReadArcBridge {
   ): Promise<{ ok: boolean; error?: string }>
   listProviderModels(slug: string): Promise<string[]>
   deleteProvider(slug: string): Promise<boolean>
+  /** 测试连接：用该来源的 Key 与代理拉一次模型列表，不花 token */
+  testProvider(slug: string): Promise<ProviderTestResult>
   /** 启动全文翻译；预估 > $0.5 且未确认时不启动并返回预估 [P7]。进度走 onTranslateProgress */
   /** force=true：无视已有译文整篇重译并覆盖缓存（换了模型、或上一次译得不好）；预估按全文算 */
   translatePaper(
@@ -247,8 +259,18 @@ export interface ReadArcBridge {
     confirmed?: boolean,
     force?: boolean,
     /** 只用于这一次的模型（重译时在横幅上选的），不改设置 */
-    override?: import('./models').TranslateOverride | null
+    override?: import('./models').TranslateOverride | null,
+    /** 流式视图读的是 arXiv 网页版时：翻译它的单元 */
+    units?: FlowUnitInput[] | null
   ): Promise<TranslateStartResult>
+  /** 后台补全了论文信息（arXiv 元数据）等：论文库需要刷新 */
+  onLibraryChanged(cb: () => void): () => void
+  /** arXiv 官方 HTML 版（有缓存读缓存）；refresh 时重新下载 */
+  arxivHtml(paperId: string, refresh?: boolean): Promise<ArxivHtmlResult>
+  /** arXiv 页面里的图片：下载缓存后以 data URL 返回 */
+  arxivAsset(paperId: string, src: string): Promise<string | null>
+  /** arXiv 单元已有的译文 */
+  arxivTranslations(paperId: string, units: FlowUnitInput[]): Promise<Record<string, { text: string; model: string }>>
   stopTranslation(paperId: string): Promise<void>
   reportTranslateFocus(paperId: string, blockOrder: number): void
   /** 目录单独翻译（一次批量调用；进度走 onTranslateProgress） */

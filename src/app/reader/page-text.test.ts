@@ -21,6 +21,12 @@ describe('译文行内内容与样式', () => {
     expect(result).not.toContain('⟦f1⟧')
   })
 
+  it('作者脚注的星号上标不和后面的星号配成斜体', () => {
+    expect(html('**Pius von Däniken**^*^ **Felix Saaro**^*^ Mark')).toBe(
+      '<strong>Pius von Däniken</strong><sup>*</sup> <strong>Felix Saaro</strong><sup>*</sup> Mark'
+    )
+  })
+
   it('斜体、粗斜体与嵌套上下标保留', () => {
     expect(html('*斜体*和***粗斜体***')).toBe('<em>斜体</em>和<strong><em>粗斜体</em></strong>')
     expect(html('**粗体 *斜体* x~i~**')).toBe('<strong>粗体 <em>斜体</em> x<sub>i</sub></strong>')

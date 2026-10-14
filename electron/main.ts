@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { IPC, type PersistedSettings } from '../shared/ipc'
 import { flushSettings, loadSettings, patchSettings } from './settings-store'
 import { isSafeExternalUrl } from './safe-url'
-import { resumePendingLayouts, setLayoutNotifier, sweepOrphanCopies, sweepStaleFigures } from './library/service'
+import { backfillArxivMeta, resumePendingLayouts, setLayoutNotifier, sweepOrphanCopies, sweepStaleFigures } from './library/service'
 import { absorbAskRouteIntoMain } from './config/main-model'
 import { registerAllIpc } from './ipc'
 import { describeError, logStartup, reportFatal, startupLogPath } from './startup'
@@ -308,6 +308,12 @@ app.whenReady().then(() => {
   } catch (err) {
     logStartup(`resumePendingLayouts skipped: ${describeError(err)}`)
   }
+  // 库里缺作者等信息的 arXiv 论文：启动稍后在后台补全（不抢启动时的网络和磁盘）
+  setTimeout(() => {
+    void backfillArxivMeta(() => {
+      for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(IPC.libraryChanged)
+    }).catch(() => {})
+  }, 8000)
   // 清掉没人引用的 PDF 副本（历史重复导入的旧副本、强杀留下的半截拷贝）
   try {
     const n = sweepOrphanCopies()

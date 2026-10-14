@@ -412,3 +412,17 @@
   line-height: 1.5;
   color: var(--fg3);
 }
+
+/* 视图切换只放图标：方一点的按钮，图标 16px */
+.seg-item--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  padding: 0;
+}
+
+.seg-item--icon svg {
+  width: 16px;
+  height: 16px;
+}

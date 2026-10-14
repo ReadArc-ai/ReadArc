@@ -1,19 +1,21 @@
 /** 模型配置聚合服务：设置界面的唯一数据源。 */
 import { join } from 'node:path'
 import { defaultRoots, loadProviders, type ConfigRoots } from '../config/providers-config'
-import { loadEndpointProxy, loadProxies } from '../config/proxies'
+import { loadEndpointProxy, loadProxies, proxyUrlForProvider, saveEndpointProxy } from '../config/proxies'
 import { resolveApiKey } from '../config/env-file'
-import { loadMainModel, saveMainModel } from '../config/main-model'
+import { clearMainModel, loadMainModel, saveMainModel } from '../config/main-model'
 import { loadTaskRoutes, saveTaskRoute, type TaskRoute, type TaskSlot } from '../config/tasks-config'
-import { saveProvider, type ProviderInput } from '../config/provider-writer'
+import { deleteProvider, saveProvider, type ProviderInput } from '../config/provider-writer'
 import { upsertEnvVar } from '../config/env-writer'
 import { BUILTIN_PROFILES, isLocalProvider } from './profiles'
 import { detectLocalProviders } from './local-detect'
-import { listModels } from './transport'
+import { listModels, TransportError, type Endpoint } from './transport'
+import { friendlyModelError } from './router'
+import { uiText } from '../i18n'
 import { costUsd, priceForModel } from './pricing'
 import type Database from 'better-sqlite3'
 import { monthUsage } from '../db'
-import type { ModelState, ProviderView, UsageOverview } from '../../shared/models'
+import type { ModelState, ProviderTestResult, ProviderView, UsageOverview } from '../../shared/models'
 
 /** 本月美元支出（单价未知的模型不计入，单独列出）。左栏与设置页共用 [P7]。 */
 export function usageOverview(db: Database.Database, roots: ConfigRoots = defaultRoots()): UsageOverview {
@@ -127,16 +129,59 @@ export async function modelsForProvider(
   slug: string,
   roots: ConfigRoots = defaultRoots()
 ): Promise<string[]> {
-  const state = modelState(roots)
-  const p = state.providers.find((v) => v.slug === slug)
+  const p = modelState(roots).providers.find((v) => v.slug === slug)
   if (!p) return []
   try {
-    return await listModels({
-      baseUrl: p.baseUrl,
-      apiKey: resolveApiKey(p.keyEnv, roots),
-      transport: p.transport
-    })
+    return await listModels(endpointFor(p, roots), AbortSignal.timeout(LIST_TIMEOUT_MS))
   } catch {
     return [] // 列表拿不到不致命：允许手填模型名
   }
+}
+
+const LIST_TIMEOUT_MS = 10_000
+
+/** 与真实请求同一条路：同样的 Key、同样绑定的代理。走代理的中转站不带代理去拉列表，会一直拉不到 */
+function endpointFor(p: ProviderView, roots: ConfigRoots): Endpoint {
+  return {
+    baseUrl: p.baseUrl,
+    apiKey: p.keyEnv ? resolveApiKey(p.keyEnv, roots) : null,
+    transport: p.transport,
+    proxyUrl: proxyUrlForProvider(p.slug, roots)
+  }
+}
+
+/**
+ * 接入页的「测试连接」：拉一次模型列表，报连没连通、有几个模型、用了多久。
+ * 不调对话接口，不花 token。失败原因给能照着改的话（Key、地址、网络）
+ */
+export async function testProvider(slug: string, roots: ConfigRoots = defaultRoots()): Promise<ProviderTestResult> {
+  const p = modelState(roots).providers.find((v) => v.slug === slug)
+  if (!p) return { ok: false, models: null, ms: 0, error: uiText('provider.test.missing') }
+  if (p.keyEnv && !p.local && !p.hasKey) return { ok: false, models: null, ms: 0, error: uiText('provider.test.no-key') }
+  const t0 = Date.now()
+  try {
+    const models = await listModels(endpointFor(p, roots), AbortSignal.timeout(LIST_TIMEOUT_MS))
+    return { ok: true, models: models.length, ms: Date.now() - t0 }
+  } catch (err) {
+    const ms = Date.now() - t0
+    // /models 404 多半是地址少了 /v1：中转站最常见的配置错误，单独说清楚
+    if (err instanceof TransportError && err.status === 404) return { ok: false, models: null, ms, error: uiText('provider.test.not-found') }
+    // 用户就在接入页：通用文案里的「请在设置 → 接入中检查」在这里是原地打转
+    if (err instanceof TransportError && (err.status === 401 || err.status === 403)) return { ok: false, models: null, ms, error: uiText('provider.test.auth') }
+    return { ok: false, models: null, ms, error: friendlyModelError(err instanceof Error ? err.message : String(err)) }
+  }
+}
+
+/**
+ * 删除自定义来源，并清掉指向它的设置：默认模型、按功能指定的模型、代理绑定。
+ * 只删配置文件里的条目，不碰 .env 里的密钥（用户可能还要用）
+ */
+export function removeProvider(slug: string, roots: ConfigRoots = defaultRoots()): boolean {
+  if (!deleteProvider(slug, roots)) return false
+  if (loadMainModel(roots)?.provider === slug) clearMainModel(roots)
+  for (const [slot, route] of Object.entries(loadTaskRoutes(roots)) as [TaskSlot, TaskRoute][]) {
+    if (route.provider === slug) saveTaskRoute(slot, { provider: 'auto' }, roots)
+  }
+  if (loadEndpointProxy(roots)[slug]) saveEndpointProxy(slug, null, roots)
+  return true
 }

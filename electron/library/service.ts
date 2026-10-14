@@ -9,6 +9,7 @@ import {
   appendBlocks,
   deletePaperData,
   enrichPaperMeta,
+  allPaperRows,
   findPaperByIds,
   getBlocks,
   getPaper,
@@ -27,12 +28,15 @@ import { blockId, sha1, simhash64 } from '../docengine/anchor'
 import { cachedTranslations, PROMPT_VERSION } from '../translate/translator'
 import { promptVersionFor, targetLang } from '../translate/target-lang'
 import { loadGlossary } from '../translate/glossary'
+import { ArxivHtmlStore, detectArxivId } from './arxiv-html'
+import { lookupPaperMeta } from './meta-lookup'
 import { FIGURE_SCALE_MARK, LAYOUT_VERSION, LayoutPreempted, cropMark, cropMarkCurrent, cropRequestsFor, figureFileName, importPdf, pruneStaleFigures, refineLayout } from './import'
 import { fetchPublicDownload, isDownloadableUrl } from '../safe-url'
 import { cropRegions, releaseLayoutSession, retainLayoutSession, modelAvailable } from '../docengine/layout-ml'
 import type { SearchResult } from '../search/types'
 import type { LayoutProgressEvent } from '../../shared/models'
 import type {
+  ArxivHtmlResult,
   BlockRow,
   ImportBatchResult,
   ImportOutcome,
@@ -293,7 +297,66 @@ export function deletePaper(paperId: string): boolean {
   } catch (err) {
     console.warn('delete thumb failed:', err)
   }
+  arxivStore().remove(paperId)
   return true
+}
+
+let arxiv: ArxivHtmlStore | null = null
+/** arXiv 网页版缓存（userData/arxiv/）；用到时才建，app 就绪后才能取路径 */
+export function arxivStore(): ArxivHtmlStore {
+  if (!arxiv) arxiv = new ArxivHtmlStore(join(app.getPath('userData'), 'arxiv'))
+  return arxiv
+}
+
+function firstPageText(paperId: string): Pick<BlockRow, 'page' | 'text'>[] {
+  return appDb().prepare('SELECT page, text FROM blocks WHERE paper_id = ? AND page = 1 ORDER BY block_order').all(paperId) as Pick<BlockRow, 'page' | 'text'>[]
+}
+
+/**
+ * 本地导入的 arXiv 论文只有版面识别出的标题（小型大写会被拆成「REAC T」），作者、年份都是空的。
+ * 首页水印能认出 arXiv 号的，从 arXiv 取一次权威的标题、作者、年份补上；用户手改过的论文不动。
+ * 补上了返回 true（界面据此刷新论文库）
+ */
+export async function enrichFromArxiv(paperId: string): Promise<boolean> {
+  const paper = getPaper(appDb(), paperId)
+  if (!paper || paper.meta_edited) return false
+  if (paper.authors && paper.year && paper.source) return false
+  const arxivId = detectArxivId(paper, firstPageText(paperId))
+  if (!arxivId) return false
+  const hit = await lookupPaperMeta({ arxiv_id: arxivId })
+  enrichPaperMeta(appDb(), paperId, {
+    title: hit.title,
+    authors: hit.authors.length > 0 ? JSON.stringify(hit.authors) : null,
+    year: hit.year,
+    source: hit.source ?? 'arXiv',
+    doi: hit.doi,
+    arxiv_id: hit.arxiv_id ?? arxivId.replace(/v\d+$/, '')
+  })
+  return true
+}
+
+/**
+ * 启动后在后台给库里缺信息的 arXiv 论文补一遍。逐篇来，每篇间隔 3 秒（arXiv API 的频率建议）；
+ * 连不上就停，下次启动再补
+ */
+export async function backfillArxivMeta(onUpdated: () => void, gapMs = 3000): Promise<void> {
+  for (const p of allPaperRows(appDb())) {
+    if (p.meta_edited || (p.authors && p.year && p.source)) continue
+    try {
+      if (await enrichFromArxiv(p.id)) onUpdated()
+      else continue
+    } catch {
+      return
+    }
+    await new Promise((r) => setTimeout(r, gapMs))
+  }
+}
+
+/** 这篇论文的 arXiv 网页版：库里记的 arXiv 号优先，没有就读首页水印 */
+export async function arxivHtmlFor(paperId: string, refresh = false): Promise<ArxivHtmlResult> {
+  const paper = getPaper(appDb(), paperId)
+  if (!paper) return { status: 'unavailable' }
+  return arxivStore().get(paperId, detectArxivId(paper, firstPageText(paperId)), refresh)
 }
 
 const marginUpgrades = new Map<string, Promise<boolean>>()

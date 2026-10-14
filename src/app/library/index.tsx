@@ -339,7 +339,7 @@ function ListView({ papers }: { papers: PaperRow[] }): JSX.Element {
                 </td>
               )}
               {showYearSource && <td className="lib-td-dim">{p.year ?? '—'}</td>}
-              {showYearSource && <td className="lib-td-dim">{p.source ?? '—'}</td>}
+              {showYearSource && <td className="lib-td-dim">{p.source ?? 'PDF'}</td>}
               <td style={{ color: status.color, fontSize: 11 }}>
                 {status.text}
                 {transLabel(p) && <span className="lib-trans-tag">{transLabel(p)}</span>}

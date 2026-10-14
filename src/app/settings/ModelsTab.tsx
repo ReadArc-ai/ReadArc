@@ -70,6 +70,8 @@ export function ProviderRow({ p }: { p: ProviderView }): JSX.Element {
   const [name, setName] = useState(p.name)
   const [baseUrl, setBaseUrl] = useState(p.baseUrl)
   const [saved, setSaved] = useState(false)
+  // 测试连接的结果；改了 Key、地址或代理就作废，免得显示上一次的结论
+  const [test, setTest] = useState<{ busy: boolean; ok?: boolean; text?: string } | null>(null)
   // 自定义 = 非官方（官方厂商填过 Key 后 config 里也会有同名条目，但仍按官方对待：不给改名 / 改地址 / 删除）
   const custom = !p.official
   const builtinLocal = p.local && p.official
@@ -78,7 +80,23 @@ export function ProviderRow({ p }: { p: ProviderView }): JSX.Element {
   const proxies = useModels((s) => s.state?.proxies ?? [])
   const bound = useModels((s) => s.state?.endpointProxy[p.slug] ?? '')
 
+  const runTest = async (): Promise<void> => {
+    setTest({ busy: true })
+    const r = await window.readarc.testProvider(p.slug)
+    setTest({
+      busy: false,
+      ok: r.ok,
+      text: r.ok
+        ? t('set.prov.test-ok', {
+            n: r.models ?? 0,
+            time: r.ms < 1000 ? t('set.prov.ms', { n: r.ms }) : t('set.prov.sec', { n: (r.ms / 1000).toFixed(1) })
+          })
+        : r.error
+    })
+  }
+
   const flash = (): void => {
+    setTest(null)
     setSaved(true)
     setTimeout(() => setSaved(false), 1800)
   }
@@ -108,6 +126,7 @@ export function ProviderRow({ p }: { p: ProviderView }): JSX.Element {
     await load()
   }
   const bindProxy = async (proxyName: string): Promise<void> => {
+    setTest(null)
     await window.readarc.saveEndpointProxy(p.slug, proxyName || null)
     await load()
   }
@@ -200,6 +219,20 @@ export function ProviderRow({ p }: { p: ProviderView }): JSX.Element {
                   </select>
                 ) : (
                   <span className="set-row-desc">{t('set.prov.no-proxy')}</span>
+                )}
+              </span>
+            </>
+          )}
+          {/* 内置本地服务靠启动时的探测，不需要这一行 */}
+          {!builtinLocal && (
+            <>
+              <span className="prov-label">{t('set.prov.test-label')}</span>
+              <span className="prov-field">
+                <button className="set-btn" title={t('set.prov.test-tip')} disabled={test?.busy} onClick={() => void runTest()}>
+                  {test?.busy ? t('set.prov.testing') : t('set.prov.test')}
+                </button>
+                {test && !test.busy && (
+                  <span className={test.ok ? 'prov-test-result is-ok' : 'prov-test-result is-error'}>{test.text}</span>
                 )}
               </span>
             </>

@@ -1,6 +1,7 @@
 import { useRef, type JSX } from 'react'
 import { useApp } from '../../store/app'
 import { usePaper } from '../../store/paper'
+import { jumpToBlock } from '../../store/chat'
 import { useT } from '../../i18n'
 import { ReaderToolbar } from './Toolbar'
 import { FindBar } from './FindBar'
@@ -61,6 +62,11 @@ export function ReaderScreen(): JSX.Element {
     // 原版视图没有 data-order 元素：按块所在页 + bbox 纵向位置滚动
     const b = usePaper.getState().bundle?.blocks.find((x) => x.block_order === order)
     if (!b) return
+    // 流式视图的页分组还没挂载：先滚到分组，等段落挂上再定位
+    if (root.querySelector(`.flow-page[data-page="${b.page}"]`)) {
+      jumpToBlock(order)
+      return
+    }
     const pageEl = root.querySelector<HTMLElement>(`.pdf-page[data-page="${b.page}"]`)
     if (!pageEl) return
     let frac = 0

@@ -4,10 +4,9 @@ import { IPC } from '../../shared/ipc'
 import type { ProviderSaveInput, ProxySaveInput, TaskRoute, TaskSlot } from '../../shared/models'
 import { saveMainModel } from '../config/main-model'
 import { upsertEnvVar } from '../config/env-writer'
-import { deleteProvider } from '../config/provider-writer'
 import { composeProxyUrl, deleteProxy, proxyPasswordEnv, saveEndpointProxy, saveProxy } from '../config/proxies'
 import { appDb } from '../library/service'
-import { detectLocal, modelState, modelsForProvider, saveProviderAndKey, saveRoute, usageOverview } from '../model/service'
+import { detectLocal, modelState, modelsForProvider, removeProvider, saveProviderAndKey, saveRoute, testProvider, usageOverview } from '../model/service'
 import { fetchErrorText, testProxyConnectivity } from '../model/transport'
 
 export function registerModelsIpc(): void {
@@ -17,7 +16,9 @@ export function registerModelsIpc(): void {
   )
   ipcMain.handle(IPC.modelsSaveRoute, (_e, slot: TaskSlot, route: TaskRoute) => saveRoute(slot, route))
   ipcMain.handle(IPC.modelsDetectLocal, () => detectLocal())
-  ipcMain.handle(IPC.modelsDeleteProvider, (_e, slug: string) => deleteProvider(slug))
+  // 删除来源时一并清掉指向它的默认模型、按功能指定的模型与代理绑定
+  ipcMain.handle(IPC.modelsDeleteProvider, (_e, slug: string) => removeProvider(slug))
+  ipcMain.handle(IPC.modelsTestProvider, (_e, slug: string) => testProvider(slug))
   ipcMain.handle(IPC.proxiesSave, (_e, input: ProxySaveInput) => {
     const { password, ...def } = input
     saveProxy(def)

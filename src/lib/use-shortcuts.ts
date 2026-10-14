@@ -101,7 +101,7 @@ export function useShortcuts(resolvedDark: boolean): void {
           break
         case 's':
           // ⌘S：截图提问（框选模式开关）。应用里没有「保存」概念，这个键给截图最好记
-          if (s.screen === 'reader' && s.view !== 'zh') s.setCropMode(!s.cropMode)
+          if (s.screen === 'reader' && (s.view === 'page' || s.view === 'orig')) s.setCropMode(!s.cropMode)
           break
         case '=':
         case '+':

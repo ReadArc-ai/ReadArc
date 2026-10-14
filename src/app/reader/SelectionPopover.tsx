@@ -230,7 +230,7 @@ export function SelectionPopover({
         }
         const node = sel.anchorNode instanceof Element ? sel.anchorNode : sel.anchorNode?.parentElement
         const pageEl = node?.closest?.('.pdf-page') as HTMLElement | null
-        const tpBlock = node?.closest?.('.tp-block') as HTMLElement | null
+        const tpBlock = node?.closest?.('.tp-block, .flow-block') as HTMLElement | null
         let blockId: string | null = null
         let rects: [number, number, number, number, number][] | undefined
         let hintRange: [number, number] | undefined

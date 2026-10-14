@@ -22,6 +22,8 @@ import {
 } from '../model/router'
 import type { Glossary } from './glossary'
 import { preservesInlineContent, repairScriptMarks, scriptMarkList } from '../../shared/translation-integrity'
+import { continuationChains, skipBlockTranslation } from '../../shared/paper-flow'
+import { joinUnit, splitUnit } from './units'
 
 /** 提示词形状变更时递增——缓存键的一半 */
 export const PROMPT_VERSION = 1
@@ -138,6 +140,8 @@ export interface BlockTranslation {
   blockId: string
   text: string
   cached: boolean
+  /** 续段单元：切回各块后的译文，顺序同传入的 parts */
+  pieces?: string[]
   model?: string
   usage?: { inputTokens: number; outputTokens: number }
 }
@@ -197,20 +201,40 @@ function cacheTranslation(
   putTranslation(db, block.block_id, glossaryVersion, promptVersionFor(PROMPT_VERSION, lang), model, text)
 }
 
+/**
+ * 续段单元的译文切回各块并逐块入缓存。切不开、或某一块切出来不像译文时整体不存，返回 null
+ * 由调用方退回逐块翻译（宁慢毋错）
+ */
+function cacheUnit(
+  db: Database.Database,
+  parts: BlockRow[],
+  glossaryVersion: number,
+  model: string,
+  text: string,
+  lang: TargetLang
+): string[] | null {
+  const pieces = splitUnit(parts, text)
+  if (!pieces || parts.some((p, k) => isNotTranslation(p.text, pieces[k], lang))) return null
+  parts.forEach((p, k) => cacheTranslation(db, p, glossaryVersion, model, pieces[k], lang))
+  return pieces
+}
+
 export async function translateBlock(
   db: Database.Database,
   deps: TranslateDeps,
   block: BlockRow,
   neighbors: { prev?: string; next?: string },
   force = false,
-  lang: TargetLang = targetLang()
+  lang: TargetLang = targetLang(),
+  /** 续段单元：block 是拼好的整段，译完按断开处切回这几块各自存（调用方已确认它们还没译） */
+  parts?: BlockRow[]
 ): Promise<BlockTranslation> {
-  if (!force) {
+  if (!force && !parts) {
     const hit = getTranslation(db, block.block_id, deps.glossary.version, promptVersionFor(PROMPT_VERSION, lang))
     if (hit) return { blockId: block.block_id, text: hit.text, cached: true, model: hit.model }
   }
-  // 没有可译内容的段：原样即译文，不花请求，也不会永远挂着「未翻译」
-  if (isUntranslatable(block.text, lang)) {
+  // 没有可译内容的段（含参考文献整节）：原样即译文，不花请求，也不会永远挂着「未翻译」
+  if (!parts && skipBlockTranslation(block, lang)) {
     cacheTranslation(db, block, deps.glossary.version, IDENTITY_MODEL, block.text, lang)
     return { blockId: block.block_id, text: block.text, cached: false, model: IDENTITY_MODEL }
   }
@@ -255,11 +279,18 @@ export async function translateBlock(
     }
     throw new Error(uiText('translation.invalid', { model: out.model }))
   }
-  cacheTranslation(db, block, deps.glossary.version, out.model, text, lang)
+  let pieces: string[] | undefined
+  if (parts) {
+    pieces = cacheUnit(db, parts, deps.glossary.version, out.model, text, lang) ?? undefined
+    if (!pieces) throw new Error(uiText('translation.invalid', { model: out.model }))
+  } else {
+    cacheTranslation(db, block, deps.glossary.version, out.model, text, lang)
+  }
   return {
     blockId: block.block_id,
     text,
     cached: false,
+    pieces,
     model: out.model,
     usage: { inputTokens: out.result.usage.inputTokens, outputTokens: out.result.usage.outputTokens }
   }
@@ -352,24 +383,51 @@ export async function translateParas(
   onProgress: (p: ParaProgress) => void,
   shouldStop: () => boolean = () => false,
   /** 整篇重译：不查缓存，译完覆盖写回（cacheTranslation 是 upsert） */
-  force = false
+  force = false,
+  /** 要翻译的块；缺省是数据库里这篇论文的块。arXiv HTML 的单元从这里传进来 */
+  blocksOverride?: BlockRow[]
 ): Promise<void> {
-  const blocks = getBlocks(db, paperId)
+  const blocks = blocksOverride ?? getBlocks(db, paperId)
   // 目标语言在发起时定下来，整轮都用它：途中改设置只影响下一轮
   const lang = targetLang()
   // 标题一并翻译（镜像译文页需要中文标题；短而便宜）
   const paras = blocks.filter((b) => b.kind === 'para' || b.kind === 'heading')
   let remaining = paras.length
   const cum = { inputTokens: 0, outputTokens: 0 }
+  const lookup = (b: BlockRow): ReturnType<typeof getTranslation> =>
+    force ? undefined : getTranslation(db, b.block_id, deps.glossary.version, promptVersionFor(PROMPT_VERSION, lang))
+
+  // 被换页、换栏截断的段拼成一个单元一起译：链头那块代表整段（文本换成拼好的整段），
+  // 其余部分跟着链头走，译完按断开处切回各块。各部分都译过了就直接用缓存
+  const chains = continuationChains(blocks)
+  const unitParts = new Map<string, BlockRow[]>()
+  const tailIds = new Set<string>()
+  for (const parts of chains.values()) for (const p of parts.slice(1)) tailIds.add(p.block_id)
+  const partsOf = (b: BlockRow): BlockRow[] => unitParts.get(b.block_id) ?? [b]
 
   // 缓存命中直出，不占请求（重译模式下全部当作未译）
   const uncached: BlockRow[] = []
   for (const b of paras) {
-    const hit = force ? undefined : getTranslation(db, b.block_id, deps.glossary.version, promptVersionFor(PROMPT_VERSION, lang))
+    if (tailIds.has(b.block_id)) continue
+    const chain = chains.get(b.block_id)
+    if (chain) {
+      const hits = chain.map(lookup)
+      if (hits.every(Boolean)) {
+        chain.forEach((p, k) => {
+          remaining--
+          onProgress({ blockId: p.block_id, text: hits[k]!.text, model: hits[k]!.model, remaining, usage: { ...cum } })
+        })
+      } else {
+        unitParts.set(b.block_id, chain)
+        uncached.push({ ...b, text: joinUnit(chain) })
+      }
+      continue
+    }
+    const hit = lookup(b)
     if (hit) {
       remaining--
       onProgress({ blockId: b.block_id, text: hit.text, model: hit.model, remaining, usage: { ...cum } })
-    } else if (isUntranslatable(b.text, lang)) {
+    } else if (skipBlockTranslation(b, lang)) {
       // 纯数字 / 符号 / 公式碎片：原样即译文，不占请求，也不会一直挂着「未翻译」
       cacheTranslation(db, b, deps.glossary.version, IDENTITY_MODEL, b.text, lang)
       remaining--
@@ -431,25 +489,63 @@ export async function translateParas(
     remaining--
     onProgress({ blockId, text, model, remaining, usage: { ...cum } })
   }
-  const emitErr = (blockId: string, err: unknown): void => {
-    remaining--
-    onProgress({
-      blockId,
-      // 段落上显示的错误也要是人话：原始串带 HTTP 状态与 JSON，读者只想知道该做什么
-      error: friendlyModelError(err instanceof Error ? err.message : String(err)),
-      remaining
-    })
+  const emitErr = (b: BlockRow, err: unknown): void => {
+    // 段落上显示的错误也要是人话：原始串带 HTTP 状态与 JSON，读者只想知道该做什么
+    const error = friendlyModelError(err instanceof Error ? err.message : String(err))
+    for (const p of partsOf(b)) {
+      remaining--
+      onProgress({ blockId: p.block_id, error, remaining })
+    }
+  }
+  /** 入库并上屏；续段单元切回各块。切不开时返回 false，交给逐段回退 */
+  const commit = (b: BlockRow, text: string, model: string): boolean => {
+    const parts = unitParts.get(b.block_id)
+    if (!parts) {
+      cacheTranslation(db, b, deps.glossary.version, model, text, lang)
+      emitOk(b.block_id, text, model)
+      return true
+    }
+    const pieces = cacheUnit(db, parts, deps.glossary.version, model, text, lang)
+    if (!pieces) return false
+    parts.forEach((p, k) => emitOk(p.block_id, pieces[k], model))
+    return true
   }
 
-  const translateSingle = async (block: BlockRow): Promise<void> => {
+  const translateOne = async (block: BlockRow, neighbors: { prev?: string; next?: string } = {}): Promise<void> => {
     try {
-      const result = await translateBlock(db, deps, block, {}, force, lang)
+      const result = await translateBlock(db, deps, block, neighbors, force, lang)
       if (result.usage) addUsage(result.usage)
       emitOk(block.block_id, result.text, result.model)
     } catch (err) {
-      emitErr(block.block_id, err)
+      emitErr(block, err)
       // 连一个供应商都没有：全池停下 [P4]；其余失败继续下一段
       if (err instanceof NoRouteError && err.hops.length === 0) abortAll = err.message
+    }
+  }
+  const translateSingle = async (block: BlockRow): Promise<void> => {
+    const parts = unitParts.get(block.block_id)
+    if (!parts) return translateOne(block)
+    try {
+      const result = await translateBlock(db, deps, block, {}, force, lang, parts)
+      if (result.usage) addUsage(result.usage)
+      parts.forEach((p, k) => emitOk(p.block_id, result.pieces?.[k] ?? '', result.model))
+    } catch (err) {
+      if (err instanceof NoRouteError && err.hops.length === 0) {
+        emitErr(block, err)
+        abortAll = err.message
+        return
+      }
+      // 整段切不回各块：退回逐块翻译，每块带上相邻部分做上下文
+      for (let k = 0; k < parts.length; k++) {
+        if (abortAll !== null || shouldStop()) {
+          for (const p of parts.slice(k)) {
+            remaining--
+            onProgress({ blockId: p.block_id, error: abortAll ?? uiText('translation.paused'), remaining })
+          }
+          return
+        }
+        await translateOne(parts[k], { prev: parts[k - 1]?.text, next: parts[k + 1]?.text })
+      }
     }
   }
 
@@ -485,9 +581,8 @@ export async function translateParas(
         if (!body) continue
         // 非译文输出不上屏不入库，留给批次收尾按缺段回退逐段处理
         if (looksUntranslated(b.text, body, lang) || !placeholdersMatch(b.text, body)) continue
+        if (!commit(b, body, model)) continue
         emitted.add(b.block_id)
-        cacheTranslation(db, b, deps.glossary.version, model, body, lang)
-        emitOk(b.block_id, body, model)
       }
     }
     const baseRunner = deps.runner
@@ -530,17 +625,14 @@ export async function translateParas(
         if (emitted.has(b.block_id)) return // 流式阶段已上屏
         const zh0 = parsed.get(i + 1)
         const zh = zh0 ? stripMetaPrefix(zh0) : zh0
-        if (zh && !looksUntranslated(b.text, zh, lang) && placeholdersMatch(b.text, zh)) {
-          cacheTranslation(db, b, deps.glossary.version, out.model, zh, lang)
-          emitOk(b.block_id, zh, out.model)
-        } else {
+        if (!(zh && !looksUntranslated(b.text, zh, lang) && placeholdersMatch(b.text, zh) && commit(b, zh, out.model))) {
           misses.push(b)
         }
       })
       // 标记对不上的段：退回逐段翻译（宁慢毋错）
       for (const b of misses) {
         if (abortAll !== null || shouldStop()) {
-          emitErr(b.block_id, new Error(abortAll ?? uiText('translation.paused')))
+          emitErr(b, new Error(abortAll ?? uiText('translation.paused')))
           continue
         }
         await translateSingle(b)
@@ -549,7 +641,7 @@ export async function translateParas(
       if (err instanceof NoRouteError && err.hops.length === 0) {
         abortAll = err.message
         for (const b of group) {
-          if (!emitted.has(b.block_id)) emitErr(b.block_id, err)
+          if (!emitted.has(b.block_id)) emitErr(b, err)
         }
         return
       }
@@ -557,7 +649,7 @@ export async function translateParas(
       for (const b of group) {
         if (emitted.has(b.block_id)) continue
         if (abortAll !== null || shouldStop()) {
-          emitErr(b.block_id, err)
+          emitErr(b, err)
           continue
         }
         await translateSingle(b)
@@ -582,8 +674,10 @@ export async function translateParas(
     for (let j = 0; j < batches.length; j++) {
       if (claimed.has(j)) continue
       for (const b of batches[j]) {
-        remaining--
-        onProgress({ blockId: b.block_id, error: abortAll, remaining })
+        for (const p of partsOf(b)) {
+          remaining--
+          onProgress({ blockId: p.block_id, error: abortAll, remaining })
+        }
       }
     }
   }

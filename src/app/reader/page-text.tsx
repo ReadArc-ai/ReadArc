@@ -193,6 +193,8 @@ export interface InlineCtx {
   blockId: string
   inlines: InlineFormula[]
   fontSize: number | null
+  /** arXiv 网页版：⟦fN⟧ 对应的 MathML（已净化），按矢量公式渲染而不是截图 */
+  math?: string[]
 }
 
 /** 行内公式截图四周各留了 1px（4 倍渲染下 0.25pt）的余量，换算高度与基线偏移时要算进去 */
@@ -225,7 +227,10 @@ export function renderInline(s: string, keyBase: string, ctx?: InlineCtx): (stri
   if (!INLINE_HINT.test(s)) return [s]
   // 先处理成对的强调范围，再在范围内嵌公式；先按公式切开会把 **文字 ⟦f1⟧**
   // 拆成两段不配对的星号，导致粗体丢失、标记裸露。递归也保留粗斜体与上下标的嵌套。
-  const emphasis = [...s.matchAll(/\*\*\*([\s\S]+?)\*\*\*|\*\*([\s\S]+?)\*\*|(?<!\*)\*(?![\s*])([^\n]+?)(?<![\s*])\*(?!\*)/g)]
+  // 上下标标记（^*^、~1~）排在最前，先把自己的字符占掉：作者脚注 **Name**^*^ 里的星号不该和后面的星号配成斜体
+  const emphasis = [
+    ...s.matchAll(/\^[^\s^~]{1,16}\^|~[^\s~^]{1,16}~|\*\*\*([\s\S]+?)\*\*\*|\*\*([\s\S]+?)\*\*|(?<!\*)\*(?![\s*])([^\n]+?)(?<![\s*])\*(?!\*)/g)
+  ].filter((m) => m[1] !== undefined || m[2] !== undefined || m[3] !== undefined)
   if (emphasis.length > 0) {
     const parts: (string | JSX.Element)[] = []
     let pos = 0
@@ -243,11 +248,19 @@ export function renderInline(s: string, keyBase: string, ctx?: InlineCtx): (stri
     if (pos < s.length) parts.push(...renderInline(s.slice(pos), `${keyBase}:${pos}`, ctx))
     return parts
   }
-  if (ctx && ctx.inlines.length > 0 && hasInlinePlaceholder(s)) {
+  if (ctx && (ctx.inlines.length > 0 || (ctx.math?.length ?? 0) > 0) && hasInlinePlaceholder(s)) {
     const parts: (string | JSX.Element)[] = []
     let pos = 0
     for (const m of s.matchAll(INLINE_PLACEHOLDER_RE)) {
       const i = m.index ?? 0
+      const mathml = ctx.math?.[Number(m[1]) - 1]
+      if (mathml) {
+        if (i > pos) parts.push(...renderInline(s.slice(pos, i), `${keyBase}:${pos}`))
+        // 解析时已经过 DOMPurify 净化（MathML 白名单）
+        parts.push(<span key={`${keyBase}:m${i}`} className="flow-math" dangerouslySetInnerHTML={{ __html: mathml }} />)
+        pos = i + m[0].length
+        continue
+      }
       const formula = ctx.inlines.find((f) => f.n === Number(m[1]))
       // 没有对应记录的序号（模型编出来的）：不露出「⟦f6⟧」这样的字样，直接去掉
       if (!formula) {

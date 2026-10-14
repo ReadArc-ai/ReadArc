@@ -5,6 +5,7 @@ import type {
   ChatAskOptions,
   ChatDeltaEvent,
   ChatHistoryItem,
+  FlowUnitInput,
   ImportProgressEvent,
   PaperMetaPatch,
   ProgressUpdate,
@@ -93,8 +94,17 @@ const bridge: ReadArcBridge = {
   testNetwork: (cfg) => ipcRenderer.invoke(IPC.networkTest, cfg),
   deleteProvider: (slug: string) => ipcRenderer.invoke(IPC.modelsDeleteProvider, slug),
   listProviderModels: (slug: string) => ipcRenderer.invoke(IPC.modelsList, slug),
-  translatePaper: (paperId: string, confirmed = false, force = false, override = null) =>
-    ipcRenderer.invoke(IPC.translatePaper, paperId, confirmed, force, override),
+  testProvider: (slug: string) => ipcRenderer.invoke(IPC.modelsTestProvider, slug),
+  translatePaper: (paperId: string, confirmed = false, force = false, override = null, units = null) =>
+    ipcRenderer.invoke(IPC.translatePaper, paperId, confirmed, force, override, units),
+  arxivHtml: (paperId: string, refresh = false) => ipcRenderer.invoke(IPC.arxivHtml, paperId, refresh),
+  onLibraryChanged: (cb: () => void) => {
+    const listener = (): void => cb()
+    ipcRenderer.on(IPC.libraryChanged, listener)
+    return () => ipcRenderer.removeListener(IPC.libraryChanged, listener)
+  },
+  arxivAsset: (paperId: string, src: string) => ipcRenderer.invoke(IPC.arxivAsset, paperId, src),
+  arxivTranslations: (paperId: string, units: FlowUnitInput[]) => ipcRenderer.invoke(IPC.arxivTranslations, paperId, units),
   stopTranslation: (paperId: string) => ipcRenderer.invoke(IPC.translateStop, paperId),
   translateText: (text: string, dictOnly = false, reqId?: number) =>
     ipcRenderer.invoke(IPC.translateText, text, dictOnly, reqId ?? null),

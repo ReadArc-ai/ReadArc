@@ -4,15 +4,29 @@ import { TARGET_LANGS, type TargetLang } from '../../../shared/lang'
 import { usePaper } from '../../store/paper'
 import { useApp, type PanelDock, type ReaderView } from '../../store/app'
 import { useT } from '../../i18n'
-import { IconContrast, IconCrop, IconDockBottom, IconFocus, IconPanelNone, IconPanelRight } from '../shell/icons'
+import {
+  IconContrast,
+  IconCrop,
+  IconDockBottom,
+  IconFocus,
+  IconPanelNone,
+  IconPanelRight,
+  IconViewBilingual,
+  IconViewOriginal,
+  IconViewSideBySide,
+  IconViewTranslation
+} from '../shell/icons'
 
+// 四个视图只放图标（和应用图标同一套笔画），名字在悬停提示和读屏标签里
 const VIEWS: {
   id: ReaderView
-  label: 'reader.view.page' | 'reader.view.orig' | 'reader.view.zh'
+  label: 'reader.view.page' | 'reader.view.bilingual' | 'reader.view.orig' | 'reader.view.zh'
+  Icon: () => JSX.Element
 }[] = [
-  { id: 'page', label: 'reader.view.page' },
-  { id: 'orig', label: 'reader.view.orig' },
-  { id: 'zh', label: 'reader.view.zh' }
+  { id: 'bilingual', label: 'reader.view.bilingual', Icon: IconViewBilingual },
+  { id: 'zh', label: 'reader.view.zh', Icon: IconViewTranslation },
+  { id: 'page', label: 'reader.view.page', Icon: IconViewSideBySide },
+  { id: 'orig', label: 'reader.view.orig', Icon: IconViewOriginal }
 ]
 
 /**
@@ -78,6 +92,8 @@ export function ReaderToolbar(): JSX.Element {
   // 是一回事，放在正文上方当横幅太占地方。逻辑仍在正文组件里，这里只留挂载点
   const setTbSlot = useApp((s) => s.setTbSlot)
   const slotRef = useCallback((el: HTMLElement | null) => setTbSlot(el), [setTbSlot])
+  const setTbSourceSlot = useApp((s) => s.setTbSourceSlot)
+  const sourceSlotRef = useCallback((el: HTMLElement | null) => setTbSourceSlot(el), [setTbSourceSlot])
 
   return (
     <div className="reader-toolbar">
@@ -86,7 +102,9 @@ export function ReaderToolbar(): JSX.Element {
         {VIEWS.map((v) => (
           <button
             key={v.id}
-            className="seg-item"
+            className="seg-item seg-item--icon"
+            aria-label={t(v.label)}
+            aria-pressed={view === v.id}
             style={
               view === v.id
                 ? { background: 'var(--acc)', color: 'var(--on-acc)' }
@@ -94,9 +112,9 @@ export function ReaderToolbar(): JSX.Element {
             }
             onClick={() => setView(v.id)}
             disabled={layoutPending && v.id !== 'orig'}
-            title={layoutPending && v.id !== 'orig' ? t('reader.view.layout-wait') : t('reader.view.tip')}
+            title={layoutPending && v.id !== 'orig' ? t('reader.view.layout-wait') : `${t(v.label)} · ${t('reader.view.tip')}`}
           >
-            {t(v.label)}
+            <v.Icon />
           </button>
         ))}
       </div>
@@ -123,6 +141,8 @@ export function ReaderToolbar(): JSX.Element {
       )}
       <span className="tb-translate" ref={slotRef} />
       <div className="reader-toolbar-right">
+        {/* 流式视图的来源切换（arXiv 网页版 / PDF 解析）由正文组件传送到这里，只在有 arXiv 网页版时出现 */}
+        <span className="tb-source" ref={sourceSlotRef} />
         {view !== 'orig' && (
           <label className="tb-control tb-zh-scale" title={t('tb.zh-scale')}>
             <span className="tb-zh-scale-glyph">{lang === 'en' ? targetLang.toUpperCase() : t('tb.zh-scale-label')}</span>
@@ -159,7 +179,7 @@ export function ReaderToolbar(): JSX.Element {
           <IconContrast on={paperDark} />
         </button>
         {/* 截图提问：框选公式 / 图表发给 AI（只能框原版页；需要模型支持看图） */}
-        {view !== 'zh' && (
+        {(view === 'page' || view === 'orig') && (
           <button
             className="tb-control tb-icon"
             onClick={() => setCropMode(!cropMode)}

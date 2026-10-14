@@ -86,6 +86,7 @@ export function dataOverview(db: Database.Database, paths: DataPaths): DataOverv
   const dbSize = dbFiles.reduce((acc, f) => acc + measure(f).bytes, 0)
   const figures = measure(join(u, 'figures'))
   const thumbs = measure(join(u, 'thumbs'))
+  const arxiv = measure(join(u, 'arxiv'))
   const entries: DataEntry[] = [
     {
       id: 'db',
@@ -103,7 +104,8 @@ export function dataOverview(db: Database.Database, paths: DataPaths): DataOverv
       sizes: tableBytes(db)
     },
     { id: 'papers', path: join(u, 'papers'), ...measure(join(u, 'papers')) },
-    { id: 'figures', path: join(u, 'figures'), bytes: figures.bytes + thumbs.bytes, files: figures.files + thumbs.files },
+    // arXiv 网页版缓存（HTML 与图片）同是能重新下载的缓存，和截图、缩略图记在一起
+    { id: 'figures', path: join(u, 'figures'), bytes: figures.bytes + thumbs.bytes + arxiv.bytes, files: figures.files + thumbs.files + arxiv.files },
     { id: 'notes', path: paths.notesDir, ...measure(paths.notesDir) },
     { id: 'settings', path: join(u, 'settings.json'), ...measure(join(u, 'settings.json')) },
     { id: 'config', path: paths.configDir, ...measure(paths.configDir) }
@@ -136,6 +138,7 @@ export function clearData(
     case 'figures':
       rm(join(u, 'figures'))
       rm(join(u, 'thumbs'))
+      rm(join(u, 'arxiv'))
       return { relaunch: false }
     case 'translations':
       db.prepare('DELETE FROM translations').run()
@@ -156,6 +159,7 @@ export function clearData(
       rm(join(u, 'papers'))
       rm(join(u, 'figures'))
       rm(join(u, 'thumbs'))
+      rm(join(u, 'arxiv'))
       return { relaunch: true }
   }
 }

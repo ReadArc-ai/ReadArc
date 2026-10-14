@@ -1,5 +1,5 @@
 /** ⌘K 命令面板：论文、目的地混合搜索；直接回车 = 问 AI。 */
-import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import { useT, type I18nKey } from '../../i18n'
 import type { PaperRow } from '../../../shared/models'
 import { useApp, type Screen } from '../../store/app'
@@ -7,8 +7,17 @@ import { usePaper } from '../../store/paper'
 import { useChat } from '../../store/chat'
 import { keyLabel, isComposingKey } from '../../lib/keys'
 
+type PaletteGroup = 'papers' | 'go' | 'ask'
+
+const GROUP_LABEL: Record<PaletteGroup, I18nKey> = {
+  papers: 'palette.group-papers',
+  go: 'palette.group-go',
+  ask: 'palette.group-ask'
+}
+
 interface PaletteItem {
   key: string
+  group: PaletteGroup
   label: string
   hint: string
   run(): void
@@ -38,6 +47,7 @@ function PaletteBody(): JSX.Element {
   const [papers, setPapers] = useState<PaperRow[]>([])
   const [selected, setSelected] = useState(0)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const listRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     void window.readarc.listPapers().then(setPapers)
@@ -60,6 +70,7 @@ function PaletteBody(): JSX.Element {
     for (const p of matchedPapers) {
       out.push({
         key: `paper:${p.id}`,
+        group: 'papers',
         label: p.title ?? p.file_path,
         hint: p.last_section ?? (p.status === 'new' ? t('palette.unread') : `${Math.round(p.progress)}%`),
         run: () => {
@@ -77,6 +88,7 @@ function PaletteBody(): JSX.Element {
       if (!q || label.toLowerCase().includes(q)) {
         out.push({
           key: `dest:${d.screen}`,
+          group: 'go',
           label,
           hint: keyLabel(d.key),
           run: () =>
@@ -90,6 +102,7 @@ function PaletteBody(): JSX.Element {
     if (q && usePaper.getState().bundle) {
       out.push({
         key: 'ask',
+        group: 'ask',
         label: t('palette.ask', { q: query.trim() }),
         hint: t('palette.current-paper'),
         run: () => {
@@ -115,6 +128,11 @@ function PaletteBody(): JSX.Element {
     ).length
     return Math.max(0, hits - PAPER_LIMIT)
   }, [query, papers])
+
+  // 方向键选到列表外的一项时跟着滚过去
+  useEffect(() => {
+    listRef.current?.querySelector('.palette-item.is-selected')?.scrollIntoView({ block: 'nearest' })
+  }, [selected])
 
   const runItem = (item: PaletteItem | undefined): void => {
     if (!item) return
@@ -145,21 +163,27 @@ function PaletteBody(): JSX.Element {
             }
           }}
         />
-        <div className="palette-list">
-          {items.map((item, i) => (
-            <button
-              key={item.key}
-              className="palette-item"
-              style={i === selected ? { background: 'var(--bg2)', color: 'var(--fg)' } : undefined}
-              onMouseEnter={() => setSelected(i)}
-              onClick={() => runItem(item)}
-            >
-              <span className="palette-label">{item.label}</span>
-              <span className="palette-hint">{item.hint}</span>
-            </button>
-          ))}
+        <div className="palette-list" ref={listRef}>
+          {items.map((item, i) => {
+            const first = i === 0 || items[i - 1].group !== item.group
+            const last = i === items.length - 1 || items[i + 1].group !== item.group
+            return (
+              <Fragment key={item.key}>
+                {first && <div className="palette-group">{t(GROUP_LABEL[item.group])}</div>}
+                <button
+                  className={i === selected ? 'palette-item is-selected' : 'palette-item'}
+                  onMouseEnter={() => setSelected(i)}
+                  onClick={() => runItem(item)}
+                >
+                  <span className="palette-label">{item.label}</span>
+                  <span className="palette-hint">{item.hint}</span>
+                </button>
+                {/* 多出来的论文数紧跟在论文组后面 */}
+                {last && item.group === 'papers' && more > 0 && <p className="palette-more">{t('palette.more', { n: more })}</p>}
+              </Fragment>
+            )
+          })}
           {items.length === 0 && <p className="placeholder-note">{t('palette.no-match')}</p>}
-          {more > 0 && <p className="palette-more">{t('palette.more', { n: more })}</p>}
         </div>
       </div>
     </div>

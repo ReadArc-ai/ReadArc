@@ -8,6 +8,7 @@ import {
   buildRouterContext,
   retranslateOne,
   startPaperTranslation,
+  unitTranslations,
   stopPaperTranslation,
   translateFragment,
   translateOutlineNow
@@ -19,9 +20,10 @@ import { genDelta, genReset, withGenAbort } from './gen'
 export function registerTranslateIpc(): void {
   ipcMain.handle(
     IPC.translatePaper,
-    (e, paperId: string, confirmed: boolean, force = false, override: TranslateOverride | null = null) =>
-      startPaperTranslation(paperId, e.sender, confirmed, force, override ?? undefined)
+    (e, paperId: string, confirmed: boolean, force = false, override: TranslateOverride | null = null, units: unknown = null) =>
+      startPaperTranslation(paperId, e.sender, confirmed, force, override ?? undefined, units ?? undefined)
   )
+  ipcMain.handle(IPC.arxivTranslations, (_e, paperId: string, units: unknown) => unitTranslations(paperId, units))
   ipcMain.handle(IPC.translateText, (e, text: string, dictOnly = false, reqId: number | null = null) => {
     const t = String(text).slice(0, 4000).trim()
     // 单词优先走内置离线词典：零延迟、零成本；未命中回退 LLM

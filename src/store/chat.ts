@@ -374,7 +374,9 @@ export function jumpToBlock(order: number): void {
   if (!root) return
   const b = usePaper.getState().bundle?.blocks.find((x) => x.block_order === order)
   if (!b) return
-  const translatedPage = root.querySelector<HTMLElement>(`.tp-page[data-page="${b.page}"]`)
+  const translatedPage =
+    root.querySelector<HTMLElement>(`.tp-page[data-page="${b.page}"]`) ??
+    root.querySelector<HTMLElement>(`.flow-page[data-page="${b.page}"]`)
   const pageEl = translatedPage ?? root.querySelector<HTMLElement>(`.pdf-page[data-page="${b.page}"]`)
   if (!pageEl) return
   if (translatedPage) {

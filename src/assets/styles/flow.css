@@ -1,0 +1,454 @@
+/* ---- 流式双语视图：一张连续的纸，按阅读顺序排，原文在上、译文在下 ----
+   字号全文统一；图、公式按原版尺寸换算成正文比例（FlowView 里算好宽度） */
+.flow-doc {
+  max-width: 46em;
+  margin: 0 auto;
+  padding: 2.2em 2.6em 4em;
+  background: #ffffff;
+  color: #1d1d1f;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-sm);
+  box-shadow: 0 1px 3px var(--shade);
+  font-family: var(--font-paper-en);
+  line-height: 1.68;
+  overflow-wrap: break-word;
+}
+
+.flow-page {
+  display: block;
+}
+
+.flow-block {
+  scroll-margin-top: 16px;
+}
+
+/* 段落：原文与译文成对，段与段之间留白比对内大，一眼分得出哪两行是一对 */
+.flow-para {
+  margin: 0 0 1.15em;
+}
+
+.flow-para p {
+  margin: 0;
+}
+
+.flow-orig {
+  color: #3a3a3c;
+}
+
+/* 双语模式下原文退半步，读者主要看译文；只有原文（还没译）时用正文色 */
+.flow-doc--both .flow-orig {
+  color: #6b6b70;
+  font-size: 0.94em;
+}
+
+.flow-orig--alone,
+.flow-doc--both .flow-orig--alone {
+  color: #1d1d1f;
+  font-size: 1em;
+}
+
+.flow-trans {
+  margin-top: 0.35em !important;
+  color: #1d1d1f;
+  font-family: var(--font-paper-zh);
+  font-size: calc(1em * var(--flow-zh-scale, 1));
+  line-height: 1.8;
+}
+
+.flow-doc--zh .flow-trans {
+  margin-top: 0 !important;
+}
+
+/* 还在翻译：一条安静的占位线，不闪烁文字 */
+.flow-trans--pending {
+  height: 0.9em;
+  width: 62%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #ececf0 0%, #f6f6f8 50%, #ececf0 100%);
+  background-size: 200% 100%;
+  animation: flow-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes flow-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-trans--pending { animation: none; }
+}
+
+/* 图注、脚注、参考文献：小一号 */
+.flow-para--caption,
+.flow-para--small,
+.flow-para--ref {
+  font-size: 0.86em;
+}
+
+.flow-para--caption {
+  margin-top: -0.3em;
+}
+
+.flow-para--ref {
+  margin-bottom: 0.55em;
+}
+
+/* 连续的单行短块（扉页、作者、单位）：按原版的一行行排，不按段落留白 */
+.flow-para--line:has(+ .flow-para--line) {
+  margin-bottom: 0.4em;
+}
+
+/* 原文译文成对显示时留一点，分得清哪两行是一对 */
+.flow-para--line:has(.flow-trans):has(+ .flow-para--line) {
+  margin-bottom: 0.75em;
+}
+
+.flow-para--ref .flow-orig {
+  color: #4a4a4f;
+}
+
+/* 标题：原文标题后跟译文标题，层级用字号区分 */
+.flow-h {
+  margin: 1.6em 0 0.6em;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #1d1d1f;
+}
+
+.flow-h--1 { font-size: 1.32em; }
+.flow-h--2 { font-size: 1.14em; }
+.flow-h--3 { font-size: 1.02em; }
+
+.flow-page:first-child .flow-h:first-child {
+  margin-top: 0;
+}
+
+.flow-h-trans {
+  display: block;
+  margin-top: 0.15em;
+  font-family: var(--font-paper-zh);
+  font-weight: 500;
+  font-size: 0.86em;
+  color: #6b6b70;
+}
+
+.flow-doc--zh .flow-h {
+  font-family: var(--font-paper-zh);
+}
+
+/* 图、表、独立公式：居中，按原版尺寸，宽于版心时等比缩小 */
+.flow-figs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 0.6em 1em;
+  margin: 0.4em 0 1.1em;
+}
+
+.flow-fig {
+  max-width: 100%;
+  height: auto;
+}
+
+.flow-fig img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.flow-fig--equation {
+  margin: 0.2em 0;
+}
+
+/* ---- 纸面深色 ---- */
+body .reader-doc--paper-dark .flow-doc {
+  background: #1c1c1e;
+  border-color: #2c2c2e;
+  color: #d6d6d6;
+}
+
+body .reader-doc--paper-dark .flow-orig,
+body .reader-doc--paper-dark .flow-orig--alone,
+body .reader-doc--paper-dark .flow-trans,
+body .reader-doc--paper-dark .flow-h {
+  color: #d6d6d6;
+}
+
+body .reader-doc--paper-dark .flow-doc--both .flow-orig:not(.flow-orig--alone),
+body .reader-doc--paper-dark .flow-h-trans,
+body .reader-doc--paper-dark .flow-para--ref .flow-orig {
+  color: #9a9aa0;
+}
+
+body .reader-doc--paper-dark .flow-fig img,
+body .reader-doc--paper-dark .flow-doc .tp-inline-fig {
+  filter: invert(0.9) hue-rotate(180deg);
+}
+
+body .reader-doc--paper-dark .flow-trans--pending {
+  background: linear-gradient(90deg, #2a2a2d 0%, #343438 50%, #2a2a2d 100%);
+  background-size: 200% 100%;
+}
+
+/* 窄窗：边距收一收 */
+@media (max-width: 720px) {
+  .flow-doc {
+    padding: 1.4em 1.2em 3em;
+  }
+}
+
+/* ---- 来源切换（工具栏右侧）：和视图切换同一套分段控件，紧凑一号 ---- */
+.tb-source:empty {
+  display: none;
+}
+
+.tb-source-seg .seg-item {
+  padding: 0 9px;
+  font-size: 11.5px;
+}
+
+/* ---- arXiv 网页版（LaTeXML）的内容样式 ----
+   只补阅读需要的那部分：公式居中带编号、三线表、子图并排、缩放表格的外壳 */
+.flow-arxiv .flow-h--title {
+  font-size: 1.6em;
+  margin: 0 0 0.4em;
+  line-height: 1.25;
+}
+
+.flow-ltx--authors {
+  margin: 0 0 1.6em;
+  font-size: 0.9em;
+  color: #4a4a4f;
+}
+
+.flow-ltx--authors .ltx_creator {
+  display: inline-block;
+  margin-right: 1.2em;
+}
+
+.flow-ltx--authors .ltx_personname {
+  font-weight: 600;
+}
+
+.flow-ltx--authors br,
+.flow-ltx--authors .ltx_author_before {
+  display: none;
+}
+
+.ltx .ltx_font_bold,
+.flow-ltx .ltx_font_bold { font-weight: 600; }
+.ltx .ltx_font_italic,
+.flow-ltx .ltx_font_italic { font-style: italic; }
+.ltx .ltx_font_typewriter,
+.flow-ltx .ltx_font_typewriter { font-family: var(--font-mono); font-size: 0.92em; }
+.ltx .ltx_font_smallcaps,
+.flow-ltx .ltx_font_smallcaps { font-variant: small-caps; }
+
+.flow-arxiv a {
+  color: var(--acc);
+  text-decoration: none;
+}
+
+.flow-arxiv a:hover {
+  text-decoration: underline;
+}
+
+.flow-arxiv math {
+  font-size: 1.04em;
+}
+
+.flow-math {
+  display: inline;
+}
+
+/* 独立公式：居中，编号靠右 */
+.flow-ltx--equation {
+  margin: 0.6em 0 1em;
+  overflow-x: auto;
+}
+
+.flow-ltx table.ltx_equation,
+.flow-ltx table.ltx_equationgroup {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.flow-ltx .ltx_eqn_cell {
+  padding: 0.15em 0;
+  vertical-align: middle;
+}
+
+.flow-ltx .ltx_eqn_center_padleft,
+.flow-ltx .ltx_eqn_center_padright {
+  width: 50%;
+}
+
+.flow-ltx .ltx_eqn_eqno {
+  text-align: right;
+  color: #6b6b70;
+  white-space: nowrap;
+  padding-left: 1em;
+}
+
+.flow-ltx .ltx_align_center { text-align: center; }
+.flow-ltx .ltx_align_left { text-align: left; }
+.flow-ltx .ltx_align_right { text-align: right; }
+
+/* 图、表：居中；子图并排，窄了换行 */
+.flow-ltx--figure {
+  margin: 0.6em 0 0.5em;
+  overflow-x: auto;
+}
+
+.flow-ltx--figure figure {
+  margin: 0;
+}
+
+.flow-ltx--figure img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.flow-ltx .ltx_flex_figure {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 0.6em;
+}
+
+.flow-ltx .ltx_flex_cell {
+  flex: 1 1 0;
+  min-width: 140px;
+}
+
+/* 并排的表格按内容定宽：放不下就各占一行，不挤成半宽再横向滚动。
+   LaTeX 的 minipage 带着按原版页宽算的固定宽度（width:166.9pt），装表格时放开 */
+.flow-ltx .ltx_flex_cell:has(table) {
+  flex: 1 1 auto;
+  max-width: 100%;
+}
+
+.flow-ltx .ltx_minipage:has(table) {
+  width: auto !important;
+  max-width: 100%;
+}
+
+/* 子图面板、minipage 的固定宽度按原版页宽算，超出版心就撑出横向滚动条：一律不超过版心 */
+.flow-ltx .ltx_figure_panel,
+.flow-ltx .ltx_minipage {
+  max-width: 100%;
+}
+
+.flow-ltx .ltx_flex_break {
+  flex-basis: 100%;
+  height: 0;
+}
+
+/* LaTeXML 用 transform 缩放宽表：在流式版心里改成自然尺寸、超宽横向滚动 */
+.flow-ltx .ltx_transformed_outer {
+  width: auto !important;
+  height: auto !important;
+  vertical-align: baseline !important;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.flow-ltx .ltx_transformed_inner {
+  transform: none !important;
+  display: block;
+}
+
+.flow-ltx table.ltx_tabular {
+  margin: 0 auto;
+  border-collapse: collapse;
+  font-size: 0.86em;
+  line-height: 1.45;
+}
+
+.flow-ltx .ltx_tabular td,
+.flow-ltx .ltx_tabular th {
+  padding: 0.25em 0.6em;
+}
+
+.flow-ltx .ltx_border_t { border-top: 1px solid #c7c7cc; }
+.flow-ltx .ltx_border_b { border-bottom: 1px solid #c7c7cc; }
+.flow-ltx .ltx_border_tt { border-top: 1.5px solid #3a3a3c; }
+.flow-ltx .ltx_border_bb { border-bottom: 1.5px solid #3a3a3c; }
+.flow-ltx .ltx_border_l { border-left: 1px solid #c7c7cc; }
+.flow-ltx .ltx_border_r { border-right: 1px solid #c7c7cc; }
+
+/* 代码清单、算法 */
+.flow-ltx--block:not(.flow-ltx--authors) {
+  margin: 0.6em 0 1em;
+  font-size: 0.86em;
+  overflow-x: auto;
+}
+
+/* 保留缩进，长行折行（原版 PDF 的 lstlisting 多半开了自动换行；模型输出示例一行能有上千字） */
+.flow-ltx .ltx_listing,
+.flow-ltx pre {
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* 列表项编号、参考文献条目 */
+.flow-item-tag {
+  font-weight: 600;
+  margin-right: 0.25em;
+}
+
+.flow-para--ref .ltx_tag_bibitem {
+  font-weight: 600;
+  margin-right: 0.4em;
+}
+
+.flow-para--ref .ltx_bibblock {
+  display: inline;
+}
+
+.flow-para--ref .ltx_bibblock + .ltx_bibblock::before {
+  content: ' ';
+}
+
+/* LaTeXML 转换失败留下的红字：保留但不刺眼 */
+.flow-arxiv .ltx_ERROR {
+  color: #a1a1a6;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+/* 深色纸面 */
+body .reader-doc--paper-dark .flow-ltx--figure img {
+  filter: invert(0.9) hue-rotate(180deg);
+}
+
+body .reader-doc--paper-dark .flow-ltx--authors,
+body .reader-doc--paper-dark .flow-ltx .ltx_eqn_eqno {
+  color: #9a9aa0;
+}
+
+body .reader-doc--paper-dark .flow-ltx .ltx_border_tt,
+body .reader-doc--paper-dark .flow-ltx .ltx_border_bb {
+  border-color: #d6d6d6;
+}
+
+body .reader-doc--paper-dark .flow-ltx .ltx_border_t,
+body .reader-doc--paper-dark .flow-ltx .ltx_border_b,
+body .reader-doc--paper-dark .flow-ltx .ltx_border_l,
+body .reader-doc--paper-dark .flow-ltx .ltx_border_r {
+  border-color: #48484a;
+}
+
+/* 内联 SVG（TikZ 示意图等）：随版心缩放 */
+.flow-ltx svg,
+.flow-arxiv .ltx_picture {
+  max-width: 100%;
+  height: auto;
+}

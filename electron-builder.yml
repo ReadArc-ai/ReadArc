@@ -1,8 +1,8 @@
 # ReadArc 打包配置（GitHub 渠道 + Mac App Store）
 appId: com.brant.readarc
 productName: ReadArc
-# 构建号（CFBundleVersion）：只增不减，跨版本也接着往上编；1.0.1 上架的是 11，1.0.2 从 12 开始。
-buildVersion: "12"
+# 构建号（CFBundleVersion）：只增不减，跨版本也接着往上编；1.0.1 上架的是 11，1.0.2 用 14（12 提审后撤回，13 上传后 Apple 处理失败）。
+buildVersion: "14"
 afterPack: scripts/verify-package.cjs
 copyright: Copyright © 2026 ReadArc
 

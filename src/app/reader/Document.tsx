@@ -6,13 +6,17 @@ import { formatTokens } from '../../lib/format'
 import { errText } from '../../lib/errors'
 import { GEN_ABORTED } from '../../../shared/ipc'
 import type { PaperSummary } from '../../../shared/models'
-import { skipTranslation } from '../../../shared/lang'
+import { skipBlockTranslation } from '../../../shared/paper-flow'
 import { useGen, useGenStream } from '../../store/gen'
 import { Markdown } from '../../lib/md'
 import { useApp } from '../../store/app'
 import { usePaper } from '../../store/paper'
 import { useT } from '../../i18n'
 import { PdfPageView } from './PageView'
+import { FlowView } from './FlowView'
+
+/** 能按页定位的元素：原版页与流式视图的页分组 */
+const PAGE_ANCHORS = '.pdf-page[data-page], .flow-page[data-page]'
 import { parseBbox } from './page-text'
 import { StreamBox } from './StreamBox'
 import { ThinkingBlock } from './Thinking'
@@ -147,6 +151,7 @@ export function ReaderDocument({
   const needsTranslation = useNeedsTranslation()
   const targetLang = useApp((s) => s.targetLang)
   const translateError = usePaper((s) => s.translateError)
+  const flowUnits = usePaper((s) => s.flowUnits)
   const translateTotal = usePaper((s) => s.translateTotal)
   const translateUsage = usePaper((s) => s.translateUsage)
   const stopTranslation = usePaper((s) => s.stopTranslation)
@@ -161,6 +166,7 @@ export function ReaderDocument({
   const tbSlot = useApp((s) => s.tbSlot)
   // 纸面深浅（工具栏一键切换；没切过时跟随界面主题）
   const paperDark = useApp((s) => s.paperDark ?? false)
+  const pageZoom = useApp((s) => s.pageZoom)
   const t = useT()
   const restored = useRef<string | null>(null)
   /** 正在把位置恢复到上次读到的地方：这期间的滚动是程序滚的，不算阅读进度 */
@@ -260,7 +266,7 @@ export function ReaderDocument({
     const probe = el.getBoundingClientRect().top + 60
     let curPage = 0
     let depth = 0
-    for (const p of el.querySelectorAll<HTMLElement>('.pdf-page[data-page]')) {
+    for (const p of el.querySelectorAll<HTMLElement>(PAGE_ANCHORS)) {
       const r = p.getBoundingClientRect()
       if (r.top > probe) break
       curPage = Number(p.dataset.page)
@@ -287,7 +293,7 @@ export function ReaderDocument({
     if (st.translating && Date.now() - lastFocusReport.current > 600) {
       lastFocusReport.current = Date.now()
       const top = el.getBoundingClientRect().top
-      const pages = el.querySelectorAll<HTMLElement>('.pdf-page[data-page]')
+      const pages = el.querySelectorAll<HTMLElement>(PAGE_ANCHORS)
       for (const p of pages) {
         const r = p.getBoundingClientRect()
         if (r.bottom > top + 40) {
@@ -317,7 +323,12 @@ export function ReaderDocument({
   const { paper, blocks } = bundle
   // 跳过翻译的段（中文原文、参考文献条目）不算「待翻译」：口径与主进程一致，
   // 否则工具栏会一直显示「还有 N 段未翻译」，点了也不会有变化
-  const paras = blocks.filter((b) => (b.kind === 'para' || b.kind === 'heading') && !skipTranslation(b.text, targetLang))
+  const pdfParas = blocks.filter((b) => (b.kind === 'para' || b.kind === 'heading') && !skipBlockTranslation(b, targetLang))
+  // 双语 / 译文是流式视图：不依赖原版页，版面识别做完才有可靠的段落顺序
+  const flow = !layoutPending && (view === 'bilingual' || view === 'zh') ? (view === 'zh' ? 'zh' : 'both') : null
+  // 流式视图读的是 arXiv 网页版时，计数、继续翻译、跳到未译处都按它的单元来
+  const paras: { block_id: string; block_order: number }[] =
+    flow && flowUnits ? flowUnits.map((u) => ({ block_id: u.id, block_order: u.order })) : pdfParas
   const untranslated = paras.filter((b) => !translations[b.block_id]?.text).length
   // 未译段里最常见的失败原因（Key 无效、余额不足、限流、模型没给出有效译文……）。
   // 原因只挂在段落的悬停提示上的话，整篇失败时用户只看到「N 段未翻译」，不知道该做什么
@@ -344,10 +355,10 @@ export function ReaderDocument({
   const modelsSorted = [...modelCounts.entries()].sort((a, b) => b[1] - a[1]).map(([m]) => m)
   // 扫描件：解析出了块但一段文字都没有。不说一句的话，用户切到译文视图只看到空白，
   // 会以为是应用坏了而不是这份 PDF 本来就没有文本层。
-  const noTextLayer = view !== 'orig' && blocks.length > 0 && paras.length === 0
+  const noTextLayer = view !== 'orig' && blocks.length > 0 && pdfParas.length === 0
   // 版面识别没做完时只给原版页：启发式分段拼出来的镜像页字号、块框都不准，
   // 会被撑得比原版长一大截，看着像只有一页。识别完成后自动回到用户选的视图
-  const mode = layoutPending ? 'orig' : view === 'page' ? 'pair' : view === 'orig' ? 'orig' : 'zh'
+  const mode = layoutPending ? 'orig' : view === 'page' ? 'pair' : 'orig'
 
   // 翻译相关横幅（原版对照与译文视图共用）
   const banners = (
@@ -469,7 +480,11 @@ export function ReaderDocument({
             onClick={() => {
               // 跳到第一个未译段，让「未翻译计数」可以直接对照验证
               const first = paras.find((b) => !translations[b.block_id]?.text)
-              if (first) jumpToBlock(first.block_order)
+              if (!first) return
+              // arXiv 单元：直接按单元元素定位
+              const unitEl = flowUnits ? document.querySelector<HTMLElement>(`[data-unit="${CSS.escape(first.block_id)}"]`) : null
+              if (unitEl) unitEl.scrollIntoView({ block: 'center' })
+              else jumpToBlock(first.block_order)
             }}
           >
             {t('doc.jump-untranslated')}
@@ -484,14 +499,15 @@ export function ReaderDocument({
   return (
     <div className={paperDark ? 'reader-doc reader-doc--paper-dark' : 'reader-doc'} ref={scrollRef} onScroll={onScroll}>
       {tbSlot ? createPortal(status, tbSlot) : null}
-      <div className="pdf-banners">
+      {/* 流式视图：横幅和论文同宽对齐（与 .flow-doc 的 46em × 正文字号一致） */}
+      <div className="pdf-banners" style={flow ? { maxWidth: `${46 * 16 * pageZoom}px` } : undefined}>
         {!tbSlot && status}
         {banners}
         {/* key 随论文切换重置卡片内部状态 */}
         <SummaryCard key={paper.id} paperId={paper.id} />
       </div>
       {/* key：换论文时整块重建，上一篇的 pdf 文档、报错和字号统计不带过来 */}
-      <PdfPageView key={paper.id} paperId={paper.id} mode={mode} />
+      {flow ? <FlowView key={paper.id} mode={flow} /> : <PdfPageView key={paper.id} paperId={paper.id} mode={mode} />}
       <CropOverlay hostRef={scrollRef} />
     </div>
   )

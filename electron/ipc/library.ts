@@ -12,6 +12,9 @@ import { figureFileName } from '../library/import'
 import {
   allPapers,
   appDb,
+  arxivHtmlFor,
+  enrichFromArxiv,
+  arxivStore,
   deletePaper,
   ensureFigureQuality,
   ensureMarginBlocks,
@@ -26,11 +29,19 @@ import { loadSettings, patchSettings } from '../settings-store'
 import { stopPaperTranslation } from '../translate/service'
 
 export function registerLibraryIpc(): void {
-  ipcMain.handle(IPC.libraryImport, (e, paths: string[]) =>
-    importPdfFiles(paths, (ev) => {
+  ipcMain.handle(IPC.libraryImport, async (e, paths: string[]) => {
+    const result = await importPdfFiles(paths, (ev) => {
       if (!e.sender.isDestroyed()) e.sender.send(IPC.importProgress, ev)
     })
-  )
+    // 有 arXiv 号的论文在后台先把网页版取下来（打开时流式视图直接读缓存），并补全标题、作者、年份
+    for (const o of result.outcomes) {
+      void arxivHtmlFor(o.paperId).catch(() => {})
+      void enrichFromArxiv(o.paperId)
+        .then((changed) => changed && !e.sender.isDestroyed() && e.sender.send(IPC.libraryChanged))
+        .catch(() => {})
+    }
+    return result
+  })
   // 只负责选文件；解析由渲染进程随后调 library:import，这样有进度回调
   ipcMain.handle(IPC.libraryPick, async (): Promise<string[]> => {
     const { canceled, filePaths } = await dialog.showOpenDialog({
@@ -90,6 +101,9 @@ export function registerLibraryIpc(): void {
   })
   ipcMain.handle(IPC.paperLookupMeta, (_e, input: { doi?: unknown; arxiv_id?: unknown }) => lookupPaperMeta(input ?? {}))
   ipcMain.handle(IPC.paperSetPinned, (_e, paperId: string, pinned: boolean) => setPaperPinned(appDb(), paperId, pinned === true))
+  // arXiv 网页版：主进程联网取页面与图片并缓存，渲染进程负责解析（DOMParser）
+  ipcMain.handle(IPC.arxivHtml, (_e, paperId: string, refresh = false) => arxivHtmlFor(String(paperId), refresh === true))
+  ipcMain.handle(IPC.arxivAsset, (_e, paperId: string, src: string) => arxivStore().asset(String(paperId), String(src)))
   ipcMain.handle(IPC.paperDelete, (_e, paperId: string) => {
     // 先停翻译：否则在途批次会继续为一篇已删除的论文调用模型（真金白银），
     // 并在删除之后把译文写回来

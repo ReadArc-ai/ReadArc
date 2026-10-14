@@ -32,6 +32,32 @@ export interface PaperRow {
   tags?: string[]
 }
 
+/** arXiv 官方 HTML 版：ok 带页面；unavailable = 没有 arXiv 号或 arXiv 没生成 HTML；offline = 这次没连上 */
+export type ArxivHtmlResult =
+  | { status: 'ok'; html: string; url: string; arxivId: string }
+  | { status: 'unavailable' | 'offline'; arxivId?: string }
+
+/**
+ * 流式视图的翻译单元（arXiv HTML 解析出的段落、标题、图注）。
+ * id 以论文 id 开头（删除论文时按前缀清掉译文），order 是对应 PDF 块的块序（视口优先翻译用）
+ */
+export interface FlowUnitInput {
+  id: string
+  kind: 'para' | 'heading'
+  text: string
+  order: number
+}
+
+/** 接入页「测试连接」的结果 */
+export interface ProviderTestResult {
+  ok: boolean
+  /** 列出的模型数；失败时为 null */
+  models: number | null
+  /** 耗时（毫秒） */
+  ms: number
+  error?: string
+}
+
 /** 编辑论文信息：整体覆盖。作者与标签是数组，空串一律存成 null */
 export interface PaperMetaPatch {
   title: string

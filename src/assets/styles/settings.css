@@ -905,3 +905,39 @@ body .btn-accent:disabled {
   opacity: 0.5;
   cursor: default;
 }
+
+/* 按功能指定模型：来源与模型控件固定宽度，三行上下对齐，不随模型名长短跳动 */
+.set-select.set-select--route {
+  width: 132px;
+}
+
+.set-select--route-model,
+.set-input.set-select--route-model {
+  width: 200px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.set-inline--route {
+  flex-wrap: nowrap;
+}
+
+/* 默认模型的提醒（没选 / 来源已删除） */
+.set-note.set-note--warn {
+  margin: 0;
+  color: var(--vi);
+}
+
+/* 测试连接的结果 */
+.prov-test-result {
+  font-size: 11px;
+  color: var(--fg3);
+}
+
+.prov-test-result.is-ok {
+  color: var(--ok);
+}
+
+.prov-test-result.is-error {
+  color: var(--vi);
+}

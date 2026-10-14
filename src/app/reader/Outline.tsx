@@ -5,6 +5,7 @@ import { usePaper } from '../../store/paper'
 import { useApp } from '../../store/app'
 import { useT } from '../../i18n'
 import { DragHandle } from '../shell/DragHandle'
+import { jumpToArxivUnit } from './ArxivFlow'
 import { IconPanelLeft } from '../shell/icons'
 
 export function ReaderOutline({
@@ -16,6 +17,8 @@ export function ReaderOutline({
   const progress = usePaper((s) => s.liveProgress)
   const current = usePaper((s) => s.currentSection)
   const translations = usePaper((s) => s.translations)
+  // 正在读 arXiv 网页版：目录用网页版的标题与译文
+  const flowOutline = usePaper((s) => s.flowOutline)
   const t = useT()
   const lang = useApp((s) => s.lang)
   const targetLang = useApp((s) => s.targetLang)
@@ -70,8 +73,10 @@ export function ReaderOutline({
     )
   }
 
-  const headingCount = bundle.outline.length
-  const untranslated = headingCount - zhByOrder.size
+  const headingCount = flowOutline ? flowOutline.length : bundle.outline.length
+  const untranslated = flowOutline
+    ? flowOutline.filter((o) => !translations[o.id]?.text).length
+    : headingCount - zhByOrder.size
 
   // 目录单独翻译：一次批量调用（~3s），进度事件实时刷新条目
   const translateOutlineNow = async (): Promise<void> => {
@@ -116,7 +121,8 @@ export function ReaderOutline({
           <IconPanelLeft open />
         </button>
         <span className="outline-label">{t('reader.outline')}</span>
-        {untranslated > 0 && needsTranslation && (
+        {/* 网页版的标题跟正文一起翻译，不单独译目录 */}
+        {untranslated > 0 && needsTranslation && !flowOutline && (
           <button
             className="outline-translate"
             onClick={() => void translateOutlineNow()}
@@ -136,7 +142,16 @@ export function ReaderOutline({
         {bundle.paper.layout_state === 'pending' && bundle.outline.length === 0 && (
           <p className="outline-pending">{t('outline.pending')}</p>
         )}
-        {bundle.outline.map((o) => {
+        {flowOutline?.map((o) => {
+          const zh = translations[o.id]?.text
+          return (
+            <button key={o.id} className={`outline-item${o.level > 1 ? ' outline-item--sub' : ''}`} onClick={() => jumpToArxivUnit(o)}>
+              <span className="outline-zh">{zh ?? o.title}</span>
+              {zh && zh !== o.title && <span className="outline-orig">{o.title}</span>}
+            </button>
+          )
+        })}
+        {!flowOutline && bundle.outline.map((o) => {
           const zh = zhByOrder.get(o.order)
           return (
             <button

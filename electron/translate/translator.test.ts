@@ -570,3 +570,65 @@ describe('isUntranslatable', () => {
     expect(isUntranslatable('The dominant sequence transduction models are based on recurrent networks.')).toBe(false)
   })
 })
+
+describe('translateParas：跨页续段与参考文献', () => {
+  const HEAD = 'Existing indexes organize the search around a single filtered attribute and then explore the remaining attributes during'
+  function at(page: number, order: number, text: string, section = 'Method'): BlockRow {
+    return { ...para(order, text), block_id: blockId(paperId, page, order), page, section, bbox: JSON.stringify([72, 100, 220, 300]) }
+  }
+  const blocks = (): BlockRow[] => [
+    at(1, 0, HEAD),
+    at(2, 1, 'the graph traversal, which wastes most of the search budget on out-of-range objects.'),
+    at(2, 2, 'Alexandr Andoni and Piotr Indyk. Near-optimal hashing algorithms for approximate nearest neighbor.', 'References')
+  ]
+
+  it('截断的两块拼成一段一起译，译文按 ⟦pb⟧ 切回各块；参考文献不调模型', async () => {
+    replaceBlocks(db, paperId, blocks())
+    const seen: string[] = []
+    const runner: AttemptRunner = async (_ep, _model, req) => {
+      const user = String(req.messages[req.messages.length - 1].content)
+      seen.push(user)
+      return { text: '现有索引围绕单个过滤属性组织搜索，然后在 ⟦pb⟧ 图遍历期间探索其余属性，把大部分搜索预算浪费在范围外的对象上。', usage: { inputTokens: 10, outputTokens: 5 } }
+    }
+    const events: { blockId: string; text?: string }[] = []
+    await translateParas(db, { ctx, glossary: EMPTY_GLOSSARY, runner }, paperId, (p) => events.push(p))
+    expect(seen).toHaveLength(1)
+    expect(seen[0]).toContain('⟦pb⟧')
+    expect(seen[0]).not.toContain('Andoni')
+    const [a, b, ref] = blocks()
+    expect(getTranslation(db, a.block_id, EMPTY_GLOSSARY.version, PROMPT_VERSION)?.text).toBe('现有索引围绕单个过滤属性组织搜索，然后在')
+    expect(getTranslation(db, b.block_id, EMPTY_GLOSSARY.version, PROMPT_VERSION)?.text).toBe('图遍历期间探索其余属性，把大部分搜索预算浪费在范围外的对象上。')
+    // 参考文献原样当译文（identity），不花请求
+    expect(getTranslation(db, ref.block_id, EMPTY_GLOSSARY.version, PROMPT_VERSION)?.model).toBe('identity')
+    expect(events.filter((e) => e.text).map((e) => e.blockId).sort()).toEqual([a.block_id, b.block_id, ref.block_id].sort())
+  })
+
+  it('模型丢了 ⟦pb⟧：按长度比例在句读处切开，两块都有译文', async () => {
+    replaceBlocks(db, paperId, blocks())
+    const runner: AttemptRunner = async () => ({
+      text: '现有索引围绕单个过滤属性组织搜索，然后在图遍历期间探索其余属性，把大部分搜索预算浪费在范围外的对象上。',
+      usage: { inputTokens: 10, outputTokens: 5 }
+    })
+    await translateParas(db, { ctx, glossary: EMPTY_GLOSSARY, runner }, paperId, () => {})
+    const [a, b] = blocks()
+    const ta = getTranslation(db, a.block_id, EMPTY_GLOSSARY.version, PROMPT_VERSION)?.text ?? ''
+    const tb = getTranslation(db, b.block_id, EMPTY_GLOSSARY.version, PROMPT_VERSION)?.text ?? ''
+    expect(ta.length).toBeGreaterThan(0)
+    expect(tb.length).toBeGreaterThan(0)
+    expect(ta + tb).toBe('现有索引围绕单个过滤属性组织搜索，然后在图遍历期间探索其余属性，把大部分搜索预算浪费在范围外的对象上。')
+  })
+
+  it('两块都译过了就直接用缓存，不再调模型', async () => {
+    replaceBlocks(db, paperId, blocks())
+    const [a, b] = blocks()
+    putTranslation(db, a.block_id, EMPTY_GLOSSARY.version, PROMPT_VERSION, 'm', '前半段')
+    putTranslation(db, b.block_id, EMPTY_GLOSSARY.version, PROMPT_VERSION, 'm', '后半段。')
+    let calls = 0
+    const runner: AttemptRunner = async () => {
+      calls++
+      return { text: 'x', usage: { inputTokens: 1, outputTokens: 1 } }
+    }
+    await translateParas(db, { ctx, glossary: EMPTY_GLOSSARY, runner }, paperId, () => {})
+    expect(calls).toBe(0)
+  })
+})

@@ -23,6 +23,7 @@ async function bootstrap(): Promise<void> {
       summaryCollapsed: settings.summaryCollapsed === true,
       wordLookup: settings.wordLookup !== false,
       chatReasoning: settings.chatReasoning === true,
+      flowSource: settings.flowSource === 'pdf' ? 'pdf' : 'arxiv',
       zhTextScale:
         typeof settings.zhTextScale === 'number' && settings.zhTextScale >= 0.8 && settings.zhTextScale <= 2
           ? settings.zhTextScale
@@ -85,6 +86,14 @@ async function bootstrap(): Promise<void> {
       usePaper.setState({ layoutProgress: e.done ? null : { page: e.page, pages: e.pages, ahead: e.ahead } })
     })
     window.readarc.onSearchAddProgress((e) => useSearch.getState().applyAddProgress(e))
+    // 后台补全了论文信息：刷新论文库；正在读的那篇也换上新标题、作者
+    window.readarc.onLibraryChanged(() => {
+      void useLibrary.getState().load().then(() => {
+        const { bundle } = usePaper.getState()
+        const row = bundle && useLibrary.getState().papers.find((p) => p.id === bundle.paper.id)
+        if (bundle && row) usePaper.setState({ bundle: { ...bundle, paper: { ...bundle.paper, ...row } } })
+      })
+    })
     window.readarc.onSearchProgress((e) => useSearch.getState().applyProgress(e))
     window.readarc.onGenDelta((e) => useGen.getState().apply(e.kind, e.delta, e.paperId, e.reset))
     window.readarc.onMenuAction((action) => {

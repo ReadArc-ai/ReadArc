@@ -52,13 +52,15 @@ const ZH: LangText = {
       '保留公式、引用标号、URL 与专有名词的原样写法；数字一律保留阿拉伯数字原样（「Hot 100」「4 种方法」「1980 年代」），不改写成汉字；保留行首列表序号（如 "1." "2."）；' +
       '粗体标记 **……**、上标 ^……^、下标 ~……~ 按原配对原样保留' +
       '（示例：「**Sparse (S)**, using x~i~.」→「**稀疏（S）**，使用 x~i~。」）；' +
-      '⟦f1⟧ ⟦f2⟧ 这类占位符代表行内公式，必须逐个原样保留在译文对应位置，不翻译、不增减、不改写括号；上下文仅用于消歧，不要翻译它。',
+      '⟦f1⟧ ⟦f2⟧ 这类占位符代表行内公式，必须逐个原样保留在译文对应位置，不翻译、不增减、不改写括号；' +
+      '⟦pb⟧ 表示原文在这里跨页断开，译文里原样保留一次，放在意思对应的位置；上下文仅用于消歧，不要翻译它。',
     translateBatch: '你是学术论文翻译引擎，把给出的分段英文译成简体中文。',
     translateBatchRules:
       '规则：输入按【N】分段；输出必须保持完全相同的【N】标记，每个标记后紧跟该段译文；' +
       '公式、变量、引用标号（如 [12]）、URL、专有名词原样保留；数字一律保留阿拉伯数字原样，不改写成汉字；保留行首列表序号（如 "1." "2."）；' +
       '粗体标记 **……**、上标 ^……^、下标 ~……~ 按原配对原样保留；' +
-      '⟦f1⟧ ⟦f2⟧ 这类占位符代表行内公式，必须逐个原样保留在译文对应位置，不翻译、不增减、不改写括号。' +
+      '⟦f1⟧ ⟦f2⟧ 这类占位符代表行内公式，必须逐个原样保留在译文对应位置，不翻译、不增减、不改写括号；' +
+      '⟦pb⟧ 表示原文在这里跨页断开，译文里原样保留一次，放在意思对应的位置。' +
       '示例：输入「**Sparse (S)**, an approach using x~i~ weights.」→ 输出「**稀疏（S）**，一种使用 x~i~ 权重的方法。」' +
       '只输出译文本身：不复述原文，不加 "Translation:"、"Bold:"、"译文：" 之类的任何前缀或说明；不增减段。',
     fragment: '你是学术论文翻译引擎。把用户给出的选段译成准确、克制的中文学术文体。',
@@ -90,13 +92,15 @@ function forLanguage(name: string): LangText {
       'Rules: output only the translation of 【本段】; do not repeat the source or add prefixes such as "Translation:", explanations or quotes; ' +
       'keep formulas, citation numbers, URLs and proper nouns exactly as written; keep every number as digits, never spell it out; keep leading list numbers ("1." "2."); ' +
       'keep bold **…**, superscript ^…^ and subscript ~…~ markers paired as in the source; ' +
-      'placeholders such as ⟦f1⟧ ⟦f2⟧ stand for inline formulas: keep every one of them verbatim at the corresponding position, never translate, drop, add or rewrite them; the context is for disambiguation only, do not translate it.',
+      'placeholders such as ⟦f1⟧ ⟦f2⟧ stand for inline formulas: keep every one of them verbatim at the corresponding position, never translate, drop, add or rewrite them; ' +
+      '⟦pb⟧ marks where the source breaks across pages: keep it exactly once at the matching point of the translation; the context is for disambiguation only, do not translate it.',
     translateBatch: `You are an academic translation engine. Translate the numbered passages into ${name}.`,
     translateBatchRules:
       'Rules: the input is split by 【N】 markers; the output must keep exactly the same 【N】 markers, each followed by that passage\'s translation; ' +
       'keep formulas, variables, citation numbers such as [12], URLs and proper nouns as written; keep every number as digits, never spell it out; keep leading list numbers ("1." "2."); ' +
       'keep bold **…**, superscript ^…^ and subscript ~…~ markers paired as in the source; ' +
-      'placeholders such as ⟦f1⟧ ⟦f2⟧ stand for inline formulas: keep every one of them verbatim at the corresponding position, never translate, drop, add or rewrite them. ' +
+      'placeholders such as ⟦f1⟧ ⟦f2⟧ stand for inline formulas: keep every one of them verbatim at the corresponding position, never translate, drop, add or rewrite them; ' +
+      '⟦pb⟧ marks where the source breaks across pages: keep it exactly once at the matching point of the translation. ' +
       'Output only the translations: no repetition of the source, no prefixes such as "Translation:"; do not add or drop passages.',
     fragment: `You are an academic translation engine. Translate the user's selection into precise, restrained academic ${name}.`,
     fragmentRules: 'Rules: output only the translation, without repeating the source or adding prefixes, explanations or quotes; keep formulas, citation numbers, URLs and proper nouns as written.',

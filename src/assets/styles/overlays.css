@@ -4,7 +4,9 @@
 .palette-overlay {
   position: fixed;
   inset: 0;
-  background: var(--shade);
+  /* 浅色主题的 --shade 只有 0.16，压不住后面的正文；和设置弹窗一样用固定的暗色，淡一些 */
+  background: rgba(0, 0, 0, 0.3);
+  animation: pop-in 0.12s ease;
   display: flex;
   justify-content: center;
   padding-top: 12vh;
@@ -51,6 +53,25 @@
   border-radius: var(--r);
   color: var(--fg2);
   font-size: 12.5px;
+}
+
+.palette-item.is-selected {
+  background: var(--bg2);
+  color: var(--fg);
+}
+
+/* 分组标题：论文 / 前往 / 问 AI */
+.palette-group {
+  padding: 8px 10px 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--fg3);
+}
+
+.palette-group:not(:first-child) {
+  margin-top: 4px;
+  border-top: 1px solid var(--line2);
+  padding-top: 10px;
 }
 
 .palette-label {

@@ -66,11 +66,12 @@ export function MainModelTab(): JSX.Element {
   const models = loaded?.prov === prov ? loaded.models : []
   const busy = prov !== '' && loaded?.prov !== prov
 
-  // 选完即存：下拉里选中模型、或手填模型名后回车 / 离开输入框，都直接写入，不需要再点保存
+  // 选完即存：换来源、选模型、手填模型名后回车 / 离开输入框，都直接写入，不需要再点保存。
+  // 模型留空 = 用该来源的默认模型（路由层取列表里第一个能对话的）
   const commit = async (nextProv: string, nextModel: string): Promise<void> => {
     const m = nextModel.trim()
-    if (!nextProv || !m) return
-    if (nextProv === cur?.provider && m === cur?.model) return
+    if (!nextProv) return
+    if (nextProv === cur?.provider && m === (cur?.model ?? '')) return
     await window.readarc.saveMainModel(nextProv, m)
     await load()
     setProvider(null)
@@ -86,11 +87,7 @@ export function MainModelTab(): JSX.Element {
       aside={
         <span className="set-inline">
           {status && <span className="set-note set-status--ok" style={{ margin: 0 }}>{status}</span>}
-          {cur && (
-            <span className="set-mono">
-              {t('set.current', { provider: cur.provider, model: cur.model })}
-            </span>
-          )}
+          <CurrentModel />
         </span>
       }
     >
@@ -103,8 +100,20 @@ export function MainModelTab(): JSX.Element {
             className="set-select"
             value={prov}
             onChange={(e) => {
-              setProvider(e.target.value)
+              const next = e.target.value
+              setProvider(next)
               setModel(null)
+              if (!next) return
+              // 换来源立即生效：当前模型在新来源里也有就沿用，没有就用新来源的默认模型。
+              // 以前要等用户在模型下拉里再选一个「不同的」模型才保存，同名模型选不动，换来源就存不上
+              void window.readarc
+                .listProviderModels(next)
+                .catch(() => [] as string[])
+                .then((ms) => {
+                  setLoaded({ prov: next, models: ms })
+                  const keep = cur?.model && ms.includes(cur.model) ? cur.model : ''
+                  return commit(next, keep)
+                })
             }}
           >
             <option value="">{t('set.pick-provider')}</option>
@@ -141,10 +150,10 @@ export function MainModelTab(): JSX.Element {
                 void commit(prov, e.target.value)
               }}
             >
+              <option value="">{t('set.provider-default')}</option>
               {modelDraft && !models.includes(modelDraft) && (
                 <option value={modelDraft}>{t('set.current-paren', { model: modelDraft })}</option>
               )}
-              {!modelDraft && <option value="">{t('set.pick-model')}</option>}
               {models.map((m) => (
                 <option key={m} value={m}>
                   {m}
@@ -166,6 +175,21 @@ export function MainModelTab(): JSX.Element {
       <ReasoningRow />
     </Section>
   )
+}
+
+/**
+ * 「当前：Vokly / gpt-5.6-terra」：显示来源的名字而不是配置里的 slug；
+ * 来源已被删除（老版本删来源不会清默认模型）时直说，让用户重新选
+ */
+function CurrentModel(): JSX.Element | null {
+  const t = useT()
+  const state = useModels((s) => s.state)
+  if (!state) return null
+  const cur = state.mainModel
+  if (!cur) return <span className="set-note set-note--warn">{t('set.current-none')}</span>
+  const p = state.providers.find((x) => x.slug === cur.provider)
+  if (!p) return <span className="set-note set-note--warn">{t('set.current-missing')}</span>
+  return <span className="set-mono">{t('set.current', { provider: p.name, model: cur.model || t('set.provider-default') })}</span>
 }
 
 /** 对话推理开关：Claude / OpenAI o 系列 / 多数网关默认不思考，要在请求里开；开了才有「思考中…」可看 */
@@ -224,11 +248,20 @@ export function RouteRow({ slot }: { slot: ConfigurableSlot }): JSX.Element | nu
       title={t(label.title)}
       desc={t(label.desc)}
       action={
-        <span className="set-inline">
+        <span className="set-inline set-inline--route">
           <select
-            className="set-select"
+            className="set-select set-select--route"
             value={route.provider}
-            onChange={(e) => void save(e.target.value, modelDraft)}
+            onChange={(e) => {
+              const next = e.target.value
+              setModel(null)
+              if (next === 'auto') return void save(next, '')
+              // 换来源时上一个来源的模型名多半不适用：新来源也有就沿用，没有就自动选
+              void window.readarc
+                .listProviderModels(next)
+                .catch(() => [] as string[])
+                .then((ms) => save(next, modelDraft && ms.includes(modelDraft) ? modelDraft : ''))
+            }}
           >
             <option value="auto">{t('set.auto-main')}</option>
             {state.providers.map((p) => (
@@ -240,7 +273,7 @@ export function RouteRow({ slot }: { slot: ConfigurableSlot }): JSX.Element | nu
           </select>
           {provider !== 'auto' && models.length > 0 ? (
             <select
-              className="set-select set-select--model"
+              className="set-select set-select--route-model"
               value={modelDraft}
               onChange={(e) => void save(route.provider, e.target.value)}
             >
@@ -256,7 +289,7 @@ export function RouteRow({ slot }: { slot: ConfigurableSlot }): JSX.Element | nu
             </select>
           ) : provider !== 'auto' ? (
             <input
-              className="set-input"
+              className="set-input set-select--route-model"
               placeholder={t('set.ph-model-optional')}
               value={modelDraft}
               onChange={(e) => setModel(e.target.value)}

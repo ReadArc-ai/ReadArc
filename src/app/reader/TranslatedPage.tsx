@@ -1,6 +1,7 @@
 /** 镜像译文页：按原版块位置排版译文，公式 / 图表用原图，页边块另排 */
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
+import { isReferenceBlock } from '../../../shared/paper-flow'
 import { horizontalRules, footnoteRules, type PdfRule } from '../../lib/pdf-rules'
 import { dominantInk, pageDecor, paperDarkInk, type PdfDecor } from '../../lib/pdf-decor'
 import { useT } from '../../i18n'
@@ -45,7 +46,8 @@ export function FitBlock({
   floorScale?: number
 }): JSX.Element {
   const t = useT()
-  const state = usePaper((s) => s.translations[block.block_id])
+  // 参考文献整节显示原文：之前版本可能已经把它们译了一遍，缓存里的译文也不再显示
+  const state = usePaper((s) => (isReferenceBlock(block) ? undefined : s.translations[block.block_id]))
   const notes = useNotes((s) => s.byPaper[block.paper_id])
   const ref = useRef<HTMLDivElement | null>(null)
   // 行内公式截图是异步加载的：图片到了才占出实际宽高，之前按空位量的字号和高度会偏小，

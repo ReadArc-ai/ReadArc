@@ -9,6 +9,32 @@ import DOMPurify from 'dompurify'
 
 marked.setOptions({ gfm: true, breaks: true })
 
+/*
+ * 中文里的粗体：CommonMark 规定收尾的 ** 前面是标点、后面紧跟文字时不算收尾，
+ * 于是「以**交错（interleaved）**的方式」会原样露出星号。模型很爱这样写，
+ * 这里把成对的 ** 直接认成粗体（*** 和代码里的星号仍走标准规则）。
+ */
+marked.use({
+  extensions: [
+    {
+      name: 'cjkStrong',
+      level: 'inline',
+      start(src: string) {
+        const i = src.indexOf('**')
+        return i < 0 ? undefined : i
+      },
+      tokenizer(src: string) {
+        const m = /^\*\*(?![\s*])([^\n]*?[^\s*])\*\*(?!\*)/.exec(src)
+        if (!m) return undefined
+        return { type: 'cjkStrong', raw: m[0], tokens: this.lexer.inlineTokens(m[1]) }
+      },
+      renderer(token) {
+        return `<strong>${this.parser.parseInline(token.tokens ?? [])}</strong>`
+      }
+    }
+  ]
+})
+
 export function mdToHtml(text: string): string {
   const raw = marked.parse(text, { async: false }) as string
   return DOMPurify.sanitize(raw, {

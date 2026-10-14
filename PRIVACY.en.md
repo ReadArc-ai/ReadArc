@@ -1,6 +1,6 @@
 # ReadArc Privacy Policy
 
-Updated: 2026-09-17
+Updated: 2026-10-14
 
 This policy covers source builds and the Mac App Store edition of ReadArc. ReadArc is a local-first paper reader with no ReadArc-operated accounts, cloud sync, advertising, telemetry or model-request relay. You choose the model provider. When you use cloud AI, the content needed for the task is sent to the endpoint you configure.
 
@@ -19,6 +19,8 @@ Imported PDF copies, extracted text, images and thumbnails, reading progress, hi
 | Translating selected text | The bundled dictionary for matching words; otherwise the selected model | The selected text when a model is called |
 | Paper search | arXiv and Semantic Scholar; the selected model is also used when rewriting a Chinese query into English | Search terms or rewritten keywords |
 | Importing search results | The paper's source website | A PDF download request |
+| arXiv HTML versions and paper details | arXiv (arxiv.org) | The paper's arXiv ID (read from the arXiv stamp on the PDF's first page), to download the official HTML version and its images and to fill in the title, authors and year in your library; no paper content is sent. Downloads are cached on your device for offline reading. The Bilingual and Translation views can switch to “PDF” in the toolbar |
+| “Fill from ID” when editing paper info | Semantic Scholar or arXiv | The DOI or arXiv ID you entered |
 | Listing models and detecting local models | Configured provider endpoints, or local Ollama / LM Studio addresses | Model-list requests, with an API key when the provider requires authentication |
 | Testing a proxy | The configured proxy and Google's `www.gstatic.com/generate_204` | A connectivity request without paper content or a model API key |
 | Opening project, support or provider links | Websites opened in your system browser | Normal browser requests |
@@ -35,7 +37,7 @@ You can use offline reading, the bundled dictionary, highlights and notes, or co
 
 ## Retention and deletion
 
-Local data generally remains until you clear it. “Settings → Data” lets you clear search caches, translations, summaries, conversations, images and usage records separately. Deleting a paper does not delete its Markdown notes.
+Local data generally remains until you clear it. “Settings → Data” lets you clear search caches, translations, summaries, conversations, images (including the cached arXiv HTML versions) and usage records separately. Deleting a paper does not delete its Markdown notes.
 
 “Reset all” removes the app database, imported PDF copies, image caches and interface settings, but **preserves model configuration, API keys and notes**. To remove everything, note these folders in Settings, quit the app and manually delete the retained files. Revoke keys with the provider when necessary. Uninstalling the app or clearing local data does not delete content received by providers or backups you created. Contact the relevant service for remote deletion requests.
 

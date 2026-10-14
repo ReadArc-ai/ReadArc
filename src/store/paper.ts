@@ -2,6 +2,7 @@
 import { create } from 'zustand'
 import { errText } from '../lib/errors'
 import type {
+  FlowUnitInput,
   PaperBundle,
   TranslateEstimateView,
   TranslateOverride,
@@ -45,6 +46,10 @@ interface PaperState {
   pendingOverride: TranslateOverride | null
   /** 翻译启动失败（如未接模型）就地展示 */
   translateError: string | null
+  /** 流式视图正在显示 arXiv 网页版：它的翻译单元（继续翻译、计数按它来）；否则 null */
+  flowUnits: FlowUnitInput[] | null
+  /** 同上：arXiv 网页版的目录（标题取自网页版，比 PDF 抽出来的准）；否则 null */
+  flowOutline: FlowOutlineItem[] | null
   /** 本轮翻译起始总段数（进度条分母） */
   translateTotal: number
   /** 本轮累计 token */
@@ -69,6 +74,14 @@ interface PaperState {
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null
 
+/** arXiv 网页版目录的一项：chunk 是它所在的懒加载分组，跳转时先把分组滚进来 */
+export interface FlowOutlineItem {
+  id: string
+  level: number
+  title: string
+  chunk: number
+}
+
 export const usePaper = create<PaperState>((set, get) => ({
   bundle: null,
   importing: false,
@@ -85,6 +98,8 @@ export const usePaper = create<PaperState>((set, get) => ({
   pendingForce: false,
   pendingOverride: null,
   translateError: null,
+  flowUnits: null,
+  flowOutline: null,
   translateTotal: 0,
   translateUsage: null,
 
@@ -148,7 +163,7 @@ export const usePaper = create<PaperState>((set, get) => ({
     set({ translateError: null })
     let res
     try {
-      res = await window.readarc.translatePaper(bundle.paper.id, confirmed, force, override)
+      res = await window.readarc.translatePaper(bundle.paper.id, confirmed, force, override, get().flowUnits)
     } catch (err) {
       // 无模型等启动期错误：就地显示，绝不静默
       set({ translateError: errText(err) })
@@ -163,7 +178,9 @@ export const usePaper = create<PaperState>((set, get) => ({
     // （参考文献条目原样即译文），这些进度在 IPC 返回前就已写进 store。
     // 用 await 前的快照会把它们重新标成待译，而后面再也没有事件来清掉，整页参考文献就一直灰着
     const pending: Record<string, BlockTranslationState> = { ...get().translations }
-    for (const b of bundle.blocks) {
+    const units = get().flowUnits
+    const targets = units ? units.map((u) => ({ block_id: u.id, kind: u.kind })) : bundle.blocks
+    for (const b of targets) {
       if (b.kind !== 'para' && b.kind !== 'heading') continue
       const cur = pending[b.block_id]
       // 重译：已有译文留在屏上（[P4] 永不清空），只标 pending，新译文到了再替换
@@ -173,11 +190,11 @@ export const usePaper = create<PaperState>((set, get) => ({
     const total = Object.values(pending).filter((t) => t.pending).length
     // 启动即上报视口焦点：可见页最先出译文
     const doc = document.querySelector('.reader-doc')
-    const topPage = doc?.querySelector('.pdf-page[data-page]')
+    const topPage = doc?.querySelector('.pdf-page[data-page], .flow-page[data-page]')
     if (doc && topPage) {
       let focusPage = Number((topPage as HTMLElement).dataset.page)
       const top = doc.getBoundingClientRect().top
-      for (const p of doc.querySelectorAll<HTMLElement>('.pdf-page[data-page]')) {
+      for (const p of doc.querySelectorAll<HTMLElement>('.pdf-page[data-page], .flow-page[data-page]')) {
         if (p.getBoundingClientRect().bottom > top + 40) {
           focusPage = Number(p.dataset.page)
           break

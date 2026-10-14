@@ -34,14 +34,14 @@ describe('tier 副作用 [P3]', () => {
 })
 
 describe('视图循环 ⌘T', () => {
-  it('page → orig → zh → page', () => {
-    useApp.setState({ view: 'page' })
+  it('bilingual → zh → page → orig → bilingual', () => {
+    useApp.setState({ view: 'bilingual' })
     const seen = [useApp.getState().view]
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
       useApp.getState().cycleView()
       seen.push(useApp.getState().view)
     }
-    expect(seen).toEqual(['page', 'orig', 'zh', 'page'])
+    expect(seen).toEqual(['bilingual', 'zh', 'page', 'orig', 'bilingual'])
   })
 })
 

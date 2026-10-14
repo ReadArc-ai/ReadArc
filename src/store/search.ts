@@ -16,6 +16,9 @@ interface SearchState {
   added: Record<string, AddState>
 
   setQuery(q: string): void
+  /** 最近搜过的词（本机记住，最多 8 条，新的在前） */
+  recent: string[]
+  clearRecent(): void
   run(): Promise<void>
   /** 某个源先回来：先渲染中间结果（只认当前这次检索的） */
   applyProgress(e: SearchProgressEvent): void
@@ -28,8 +31,33 @@ interface SearchState {
   }): void
 }
 
+const RECENT_KEY = 'readarc.recentSearches'
+const RECENT_MAX = 8
+
+function loadRecent(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]') as unknown
+    return Array.isArray(v) ? v.filter((q): q is string => typeof q === 'string').slice(0, RECENT_MAX) : []
+  } catch {
+    return []
+  }
+}
+
+function saveRecent(list: string[]): void {
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(list))
+  } catch {
+    /* 存不下（隐私模式、配额）就只在本次会话里记 */
+  }
+}
+
 export const useSearch = create<SearchState>((set, get) => ({
   query: '',
+  recent: loadRecent(),
+  clearRecent: () => {
+    saveRecent([])
+    set({ recent: [] })
+  },
   outcome: null,
   searching: false,
   added: {},
@@ -39,7 +67,10 @@ export const useSearch = create<SearchState>((set, get) => ({
   run: async () => {
     const { query, searching } = get()
     if (!query.trim() || searching) return
-    set({ searching: true })
+    const q = query.trim()
+    const recent = [q, ...get().recent.filter((r) => r !== q)].slice(0, RECENT_MAX)
+    saveRecent(recent)
+    set({ searching: true, recent })
     try {
       set({ outcome: await window.readarc.runSearch(query.trim()) })
     } catch (err) {

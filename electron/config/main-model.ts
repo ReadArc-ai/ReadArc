@@ -36,6 +36,15 @@ export function saveMainModel(m: MainModel, roots: ConfigRoots = defaultRoots())
   writeFileSync(path, text, 'utf8')
 }
 
+/** 默认模型指向的来源被删掉时清空，界面提示重新选择；否则路由会一直去找一个不存在的来源 */
+export function clearMainModel(roots: ConfigRoots = defaultRoots()): boolean {
+  const path = join(roots.readarcDir, 'config.yaml')
+  if (!existsSync(path)) return false
+  const { text, changed } = removeYamlBlock(readFileSync(path, 'utf8'), ['main'])
+  if (changed) writeFileSync(path, text, 'utf8')
+  return changed
+}
+
 export function loadMainModel(roots: ConfigRoots = defaultRoots()): MainModel | null {
   const readarc = readYaml(join(roots.readarcDir, 'config.yaml')) as {
     main?: { provider?: unknown; model?: unknown }

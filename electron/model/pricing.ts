@@ -3,7 +3,9 @@
  * 价格会过时——这里是保守估计用于护栏与展示，不是账单；未知模型返回 null（不拦截但明示未知）。
  * 贡献接口：加一行 PRICING 即可。
  */
-import { skipTranslation, type TargetLang } from '../../shared/lang'
+import type { TargetLang } from '../../shared/lang'
+import type { BlockRow } from '../../shared/models'
+import { skipBlockTranslation } from '../../shared/paper-flow'
 
 export interface ModelPrice {
   /** USD per 1M input tokens */
@@ -76,14 +78,14 @@ const PARAS_PER_BATCH = 6
 const BATCH_OVERHEAD_TOKENS = 160
 
 export function estimateTranslation(
-  paras: { text: string }[],
+  paras: { text: string; kind?: BlockRow['kind']; section?: string | null }[],
   model: string,
   isLocal: boolean,
   targetLang: TargetLang = 'zh'
 ): TranslateEstimate {
   // 不会送去模型的段（中文原文、参考文献条目、纯符号）不算钱也不算段数，
   // 否则一篇中文论文会预估出一笔根本不会发生的花费
-  const billable = paras.filter((p) => !skipTranslation(p.text, targetLang))
+  const billable = paras.filter((p) => !skipBlockTranslation({ kind: p.kind ?? 'para', section: p.section ?? null, text: p.text }, targetLang))
   const chars = billable.reduce((sum, p) => sum + p.text.length, 0)
   const textTokens = Math.ceil(chars / 3.8)
   // 翻译是按批发的（见 translator 的 makeBatches，一批最多 6 段），系统提示与术语表一批只发一次；

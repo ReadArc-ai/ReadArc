@@ -9,7 +9,8 @@ import type { Lang, LibView, ThemeMode } from '../../shared/ipc'
 export type Screen = 'reader' | 'library' | 'discover' | 'onboard'
 export type Tier = 'sm' | 'md' | 'lg'
 /** page = 原版对照（pdf.js 整页渲染 + 平行译文列）；orig/zh 为重排视图 */
-export type ReaderView = 'page' | 'orig' | 'zh'
+/** page = 原版对照；bilingual = 流式双语（默认）；zh = 流式只看译文；orig = 原版页 */
+export type ReaderView = 'page' | 'bilingual' | 'zh' | 'orig'
 export type PanelTab = 'chat' | 'notes'
 export type PanelDock = 'right' | 'bottom'
 export type SettingsTab = 'general' | 'personas' | 'main' | 'models' | 'network' | 'data' | 'privacy'
@@ -73,11 +74,17 @@ interface AppState {
   cropMode: boolean
   setCropMode(on: boolean): void
   /** 对话时要求模型先思考再回答 */
+  /** 流式视图的来源：arxiv = 有 arXiv 网页版就用它；pdf = 固定用 PDF 解析 */
+  flowSource: 'arxiv' | 'pdf'
+  setFlowSource(source: 'arxiv' | 'pdf'): void
   chatReasoning: boolean
   setChatReasoning(on: boolean): void
   /** 工具栏里给翻译状态留的挂载点：状态逻辑在正文组件里，通过 portal 渲染到这里 */
   tbSlot: HTMLElement | null
   setTbSlot(el: HTMLElement | null): void
+  /** 工具栏右侧给流式视图来源切换（arXiv 网页版 / PDF）留的挂载点 */
+  tbSourceSlot: HTMLElement | null
+  setTbSourceSlot(el: HTMLElement | null): void
   setPageZoom(zoom: number): void
   setZhTextScale(scale: number): void
   toggleRail(): void
@@ -101,7 +108,7 @@ interface AppState {
   togglePanel(): void
 }
 
-const VIEW_CYCLE: ReaderView[] = ['page', 'orig', 'zh']
+const VIEW_CYCLE: ReaderView[] = ['bilingual', 'zh', 'page', 'orig']
 
 /** 进入专注模式前的布局，退出时恢复 */
 let focusRestore: { railCollapsed: boolean; outlineCollapsed: boolean; panelOpen: boolean } | null = null
@@ -115,7 +122,7 @@ export const useApp = create<AppState>((set, get) => ({
   targetLang: 'zh',
   targetLangPinned: false,
   tier: 'lg',
-  view: 'page',
+  view: 'bilingual',
   libView: 'cover',
   panel: 'chat',
   panelOpen: true,
@@ -165,6 +172,11 @@ export const useApp = create<AppState>((set, get) => ({
   setCropMode: (cropMode) => set({ cropMode }),
 
   chatReasoning: false,
+  flowSource: 'arxiv',
+  setFlowSource: (flowSource) => {
+    set({ flowSource })
+    window.readarc?.patchSettings({ flowSource })
+  },
   setChatReasoning: (chatReasoning) => {
     set({ chatReasoning })
     window.readarc?.patchSettings({ chatReasoning })
@@ -176,6 +188,10 @@ export const useApp = create<AppState>((set, get) => ({
     window.readarc?.patchSettings({ wordLookup })
   },
 
+  tbSourceSlot: null,
+  setTbSourceSlot: (tbSourceSlot) => {
+    if (get().tbSourceSlot !== tbSourceSlot) set({ tbSourceSlot })
+  },
   tbSlot: null,
   setTbSlot: (tbSlot) => {
     if (get().tbSlot !== tbSlot) set({ tbSlot })

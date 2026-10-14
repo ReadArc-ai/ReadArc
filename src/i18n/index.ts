@@ -32,6 +32,14 @@ const dict = {
     en: 'Could not read the file path. Save the file locally first, or select it using Import.'
   },
   'reader.view.page': { zh: '原版对照', en: 'Side by side' },
+  'reader.view.bilingual': { zh: '双语', en: 'Bilingual' },
+  'flow.source.label': { zh: '正文来源', en: 'Text source' },
+  'flow.source.arxiv': { zh: 'arXiv', en: 'arXiv' },
+  'flow.source.pdf': { zh: 'PDF', en: 'PDF' },
+  'flow.source.retry': { zh: '连 arXiv 重试', en: 'Retry arXiv' },
+  'flow.source.arxiv-hint': { zh: '来自 arXiv 官方网页版 {id}，公式和表格更清晰', en: 'From the official arXiv HTML of {id}. Formulas and tables are sharper.' },
+  'flow.source.pdf-hint': { zh: '按 PDF 版面解析的正文', en: 'Text parsed from the PDF layout' },
+  'flow.source.offline': { zh: '暂时连不上 arXiv，先显示 PDF 解析的版本', en: 'Could not reach arXiv. Showing the version parsed from the PDF.' },
   'reader.view.orig': { zh: '原文', en: 'Original' },
   'reader.view.zh': { zh: '译文', en: 'Translation' },
   'reader.view.tip': { zh: '⌘T 轮流切换', en: '⌘T cycles views' },
@@ -76,6 +84,12 @@ const dict = {
     en: 'Summarize the method: its core idea, key steps and differences from common approaches.'
   },
   'panel.preset.method.label': { zh: '解释方法', en: 'Explain the method' },
+  'panel.chat.welcome': { zh: '就这篇论文问点什么', en: 'Ask anything about this paper' },
+  'panel.chat.welcome-sub': { zh: '回答会标出原文出处，点一下就能跳过去', en: 'Answers cite the passages they use. Click one to jump there.' },
+  'panel.suggest.problem.label': { zh: '要解决什么问题', en: 'The problem' },
+  'panel.suggest.problem': { zh: '这篇论文要解决什么问题？为什么这个问题重要？', en: 'What problem does this paper address, and why does it matter?' },
+  'panel.suggest.experiments.label': { zh: '实验怎么做的', en: 'The experiments' },
+  'panel.suggest.experiments': { zh: '实验是怎么设计的？用了哪些数据集和对比方法，主要结果是什么？', en: 'How are the experiments designed? Which datasets and baselines are used, and what are the main results?' },
   'panel.preset.weakness': {
     zh: '分析这篇论文的主要局限，并引用相关段落说明依据。',
     en: 'Analyze the paper’s main limitations, citing relevant passages.'
@@ -272,6 +286,15 @@ const dict = {
   'set.err-need-both': { zh: '请选择供应商并填写模型名称。', en: 'Choose a provider and enter a model name.' },
   'set.main-model': { zh: '默认模型', en: 'Default model' },
   'set.current': { zh: '当前：{provider} / {model}', en: 'Current: {provider} / {model}' },
+  'set.current-none': { zh: '还没选默认模型', en: 'No default model yet' },
+  'set.current-missing': { zh: '原来的来源已删除，请重新选择', en: 'The previous provider was removed. Choose a new one.' },
+  'set.prov.test-label': { zh: '连接', en: 'Connection' },
+  'set.prov.test': { zh: '测试连接', en: 'Test connection' },
+  'set.prov.testing': { zh: '测试中…', en: 'Testing…' },
+  'set.prov.test-ok': { zh: '已连通 · {n} 个模型 · {time}', en: 'Connected · {n} models · {time}' },
+  'set.prov.ms': { zh: '{n} 毫秒', en: '{n} ms' },
+  'set.prov.sec': { zh: '{n} 秒', en: '{n} s' },
+  'set.prov.test-tip': { zh: '用这个来源的 Key 和代理拉一次模型列表，不花 token', en: 'Fetches the model list with this provider’s key and proxy. Uses no tokens.' },
   'set.main-desc': {
     zh: '对话及未单独指定模型的功能使用此模型。也可在对话框底部切换。',
     en: 'Used for chat and features without a separate model. You can also change it below the chat input.'
@@ -575,6 +598,10 @@ const dict = {
   },
   'lib.empty.filter': { zh: '这个分类下还没有论文', en: 'No papers in this collection yet' },
   'lib.search': { zh: '搜索论文库…', en: 'Search your library…' },
+  'search.examples': { zh: '试试这些', en: 'Try these' },
+  'search.recent': { zh: '最近搜索', en: 'Recent' },
+  'search.recent-clear': { zh: '清空', en: 'Clear' },
+  'search.start-note': { zh: '中文主题会先改写成英文关键词再搜。找到的论文点一下就能加进论文库。', en: 'Found papers go into your library with one click.' },
   'lib.search-short': { zh: '搜索…', en: 'Search…' },
   'lib.empty.search': { zh: '没有匹配「{q}」的论文', en: 'No papers match “{q}”' },
 
@@ -701,6 +728,9 @@ const dict = {
     zh: '搜索论文或功能，也可输入问题向 AI 提问…',
     en: 'Search papers or actions, or enter a question for AI…'
   },
+  'palette.group-papers': { zh: '论文', en: 'Papers' },
+  'palette.group-go': { zh: '前往', en: 'Go to' },
+  'palette.group-ask': { zh: '问 AI', en: 'Ask AI' },
   'palette.no-match': { zh: '没有匹配项', en: 'No matches' },
   'palette.more': { zh: '还有 {n} 篇，可在论文库中查看', en: '{n} more papers available in Library' },
 

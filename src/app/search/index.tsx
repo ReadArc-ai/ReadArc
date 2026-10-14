@@ -163,6 +163,56 @@ function SearchSummaryCard({
   )
 }
 
+/** 还没搜过时的起始页：示例查询 + 最近搜索，点一下就搜 */
+const EXAMPLES: { zh: string; en: string }[] = [
+  { zh: '检索增强生成 评测', en: 'retrieval-augmented generation evaluation' },
+  { zh: 'diffusion models survey', en: 'diffusion models survey' },
+  { zh: '长上下文 大语言模型', en: 'long-context language models' },
+  { zh: '2210.03629', en: '2210.03629' }
+]
+
+function SearchStart({ onPick }: { onPick: (q: string) => void }): JSX.Element {
+  const t = useT()
+  const lang = useApp((s) => s.lang)
+  const recent = useSearch((s) => s.recent)
+  const clearRecent = useSearch((s) => s.clearRecent)
+  return (
+    <div className="search-start">
+      <div className="search-start-group">
+        <span className="search-start-label">{t('search.examples')}</span>
+        <div className="search-start-chips">
+          {EXAMPLES.map((e) => {
+            const q = lang === 'zh' ? e.zh : e.en
+            return (
+              <button key={q} className="search-chip" onClick={() => onPick(q)}>
+                {q}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      {recent.length > 0 && (
+        <div className="search-start-group">
+          <span className="search-start-label">
+            {t('search.recent')}
+            <button className="tb-link tb-link--dim search-start-clear" onClick={clearRecent}>
+              {t('search.recent-clear')}
+            </button>
+          </span>
+          <div className="search-start-chips">
+            {recent.map((q) => (
+              <button key={q} className="search-chip search-chip--recent" onClick={() => onPick(q)}>
+                {q}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <p className="search-start-note">{t('search.start-note')}</p>
+    </div>
+  )
+}
+
 export function DiscoverScreen(): JSX.Element {
   const t = useT()
   const offline = useApp((s) => s.offline)
@@ -214,6 +264,15 @@ export function DiscoverScreen(): JSX.Element {
                   : t('search.raw-count', { n: outcome.rawCount })}
               </span>
             </div>
+          )}
+
+          {!outcome && !searching && (
+            <SearchStart
+              onPick={(q) => {
+                setQuery(q)
+                void run()
+              }}
+            />
           )}
 
           {outcome?.queryUsed && <p className="search-used">{t('search.used-en', { q: outcome.queryUsed })}</p>}

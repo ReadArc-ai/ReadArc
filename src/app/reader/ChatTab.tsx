@@ -50,6 +50,8 @@ export function ChatTab(): JSX.Element {
   const messages = useChat((s) => (activeSessionId ? s.messagesBySession[activeSessionId] : undefined)) ?? EMPTY_MESSAGES
   const loaded = useChat((s) => (paperId ? s.loadedPapers[paperId] : false))
   const loadingSessionId = useChat((s) => s.loadingSessionId)
+  // 还没有会话（新论文）时两者都是 null，不能当成「正在加载」
+  const sessionLoading = !!activeSessionId && loadingSessionId === activeSessionId
   const historyError = useChat((s) => s.historyError)
   const loadSessions = useChat((s) => s.loadSessions)
   const selectSession = useChat((s) => s.selectSession)
@@ -123,6 +125,15 @@ export function ChatTab(): JSX.Element {
     : customPresets.length > 0
       ? customPresets.map((q) => ({ label: presetChipLabel(q), q, whole: true }))
       : [{ label: t('panel.preset.custom.label'), q: t('panel.preset.custom'), whole: true }]
+  // 空对话的建议卡：默认讲法在两条快捷提问之外再给两条通用的，其他讲法用它自己的提问
+  const welcome =
+    persona === 'default'
+      ? [
+          { label: t('panel.suggest.problem.label'), q: t('panel.suggest.problem'), whole: true },
+          ...presets,
+          { label: t('panel.suggest.experiments.label'), q: t('panel.suggest.experiments'), whole: false }
+        ]
+      : presets
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const atBottom = useRef(true)
 
@@ -277,11 +288,21 @@ export function ChatTab(): JSX.Element {
         }}
       >
         {/* 讲法只在 composer 底栏切换一处，空状态不再重复摆一排 */}
-        {(!loaded || (activeSessionId && loadingSessionId === activeSessionId)) && (
-          <p className="placeholder-note">{t('panel.chat.loading')}</p>
-        )}
-        {loaded && loadingSessionId !== activeSessionId && messages.length === 0 && (
-          <p className="placeholder-note">{t('panel.chat.empty')}</p>
+        {(!loaded || sessionLoading) && <p className="placeholder-note">{t('panel.chat.loading')}</p>}
+        {loaded && !sessionLoading && messages.length === 0 && (
+          // 空对话：引导语 + 几张建议问题卡（当前讲法的提问，默认讲法再加两条通用的），点一下就问
+          <div className="chat-welcome">
+            <p className="chat-welcome-title">{t('panel.chat.welcome')}</p>
+            <p className="chat-welcome-sub">{t('panel.chat.welcome-sub')}</p>
+            <div className="chat-welcome-list">
+              {welcome.map((p) => (
+                <button key={p.q} className="chat-welcome-card" onClick={() => void ask(p.q, { whole: p.whole })} disabled={asking}>
+                  <span className="chat-welcome-label">{p.label}</span>
+                  <span className="chat-welcome-q">{p.q}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         )}
         {historyError && <div className="zh-error"><span>{historyError}</span></div>}
         {messages.map((m, i) => (
@@ -323,13 +344,14 @@ export function ChatTab(): JSX.Element {
             <button onClick={clearQuote}>×</button>
           </div>
         )}
-        <div className="chat-presets">
+        {/* 有对话之后才在输入框上方留一排快捷提问；空对话时它们是中间的卡片 */}
+        {messages.length > 0 && <div className="chat-presets">
           {presets.map((p) => (
             <button key={p.q} title={p.q} onClick={() => void ask(p.q, { whole: p.whole })} disabled={asking}>
               {p.label}
             </button>
           ))}
-        </div>
+        </div>}
         {/* composer：输入区 + 底栏（模型切换 / 发送或停止）装在同一个框里，
             和常见 AI 对话产品一致；发送中按钮变成「停止」，已生成的部分会保留 */}
         <div className="chat-composer">

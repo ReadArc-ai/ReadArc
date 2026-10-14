@@ -163,3 +163,59 @@ export function IconEdit(): JSX.Element {
     </svg>
   )
 }
+
+/*
+ * 阅读视图四个图标，和应用图标同一套笔画：圆头横条代表一行字，实色是原文、淡色是译文，
+ * 弧线是图标上那道「桥」，代表翻译过来的内容。
+ */
+const bar = { stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' } as const
+const DIM = 0.5
+
+/** 双语：原文一行、译文一行，成对往下排 */
+export function IconViewBilingual(): JSX.Element {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden>
+      <line x1="2" y1="2.75" x2="14" y2="2.75" {...bar} />
+      <line x1="2" y1="5.75" x2="14" y2="5.75" {...bar} opacity={DIM} />
+      <line x1="2" y1="10.25" x2="14" y2="10.25" {...bar} />
+      <line x1="2" y1="13.25" x2="9" y2="13.25" {...bar} opacity={DIM} />
+    </svg>
+  )
+}
+
+/** 译文：弧线下只有译文 */
+export function IconViewTranslation(): JSX.Element {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path d="M3.5 7.25C3.5 1.25 12.5 1.25 12.5 7.25" {...bar} />
+      <line x1="2.5" y1="10.75" x2="13.5" y2="10.75" {...bar} opacity={DIM} />
+      <line x1="2.5" y1="13.75" x2="9.5" y2="13.75" {...bar} opacity={DIM} />
+    </svg>
+  )
+}
+
+/** 原版对照：左边原文、右边译文两栏，和应用图标下半部分一样 */
+export function IconViewSideBySide(): JSX.Element {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden>
+      <line x1="2" y1="4" x2="6.5" y2="4" {...bar} />
+      <line x1="2" y1="8" x2="6.5" y2="8" {...bar} />
+      <line x1="2" y1="12" x2="6.5" y2="12" {...bar} />
+      <line x1="9.5" y1="4" x2="14" y2="4" {...bar} opacity={DIM} />
+      <line x1="9.5" y1="8" x2="14" y2="8" {...bar} opacity={DIM} />
+      <line x1="9.5" y1="12" x2="14" y2="12" {...bar} opacity={DIM} />
+    </svg>
+  )
+}
+
+/** 原文：一页原版 PDF */
+export function IconViewOriginal(): JSX.Element {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden>
+      <rect x="3" y="1.75" width="10" height="12.5" rx="2" stroke="currentColor" strokeWidth="1.4" />
+      <line x1="5.75" y1="5.5" x2="10.25" y2="5.5" {...bar} strokeWidth={1.5} />
+      <line x1="5.75" y1="8.25" x2="10.25" y2="8.25" {...bar} strokeWidth={1.5} />
+      <line x1="5.75" y1="11" x2="8.5" y2="11" {...bar} strokeWidth={1.5} />
+    </svg>
+  )
+}

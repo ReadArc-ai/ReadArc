@@ -11,9 +11,12 @@ import { isFreeAttempt, resolveChain, runTask, type RouterContext } from '../mod
 import { TranslationRunState } from './run-state'
 import { estimateTranslation, CONFIRM_THRESHOLD_USD } from '../model/pricing'
 import { appDb } from '../library/service'
-import { recordUsage, getBlocks, getPaper } from '../db'
+import { recordUsage, getBlocks, getPaper, getTranslation } from '../db'
 import { loadGlossary } from './glossary'
-import { cachedTranslations, translateBlock, translateOutline, translateParas } from './translator'
+import { cachedTranslations, PROMPT_VERSION, translateBlock, translateOutline, translateParas } from './translator'
+import { unitBlocks } from './units'
+import { promptVersionFor } from './target-lang'
+import { preservesInlineContent } from '../../shared/translation-integrity'
 import type { TranslateOverride, TranslateProgressEvent, TranslateStartResult } from '../../shared/models'
 
 export function buildRouterContext(): RouterContext {
@@ -27,6 +30,18 @@ export function buildRouterContext(): RouterContext {
 
 const runState = new TranslationRunState()
 
+/** 单元已有的译文（当前术语表与提示词版本、公式对得上的才算） */
+export function unitTranslations(paperId: string, units: unknown): Record<string, { text: string; model: string }> {
+  const glossary = loadGlossary()
+  const version = promptVersionFor(PROMPT_VERSION, targetLang())
+  const out: Record<string, { text: string; model: string }> = {}
+  for (const b of unitBlocks(paperId, units)) {
+    const hit = getTranslation(appDb(), b.block_id, glossary.version, version)
+    if (hit && hit.text.trim() && !hit.text.includes('think>') && preservesInlineContent(b.text, hit.text)) out[b.block_id] = hit
+  }
+  return out
+}
+
 /**
  * 启动全文翻译。单次预估 > $0.5 且未确认 → 不启动，返回预估值与依据让 UI 先问 [P7]。
  */
@@ -37,7 +52,9 @@ export function startPaperTranslation(
   /** 整篇重译：无视缓存、覆盖写回。换了模型或上一轮译得不好时用；预估按全文算，同样过 $0.5 确认 */
   force = false,
   /** 只用于这一次的模型：替换降级链第一跳，其余兜底不变；不写设置 */
-  override?: TranslateOverride
+  override?: TranslateOverride,
+  /** 流式视图读的是 arXiv HTML 时，翻译它的单元而不是 PDF 的块 */
+  units?: unknown
 ): TranslateStartResult {
   // 已在跑：撤回还没被消化的停止请求（用户是要续译），不重复起一轮
   if (runState.resumeIfRunning(paperId)) return { started: true }
@@ -54,8 +71,9 @@ export function startPaperTranslation(
       uiText('model.no-route')
     )
   }
-  const cached = force ? {} : cachedTranslations(appDb(), paperId, glossary.version)
-  const paras = getBlocks(appDb(), paperId).filter(
+  const source = units !== undefined ? unitBlocks(paperId, units) : undefined
+  const cached = force ? {} : source ? unitTranslations(paperId, units) : cachedTranslations(appDb(), paperId, glossary.version)
+  const paras = (source ?? getBlocks(appDb(), paperId)).filter(
     (b) => (b.kind === 'para' || b.kind === 'heading') && !cached[b.block_id]
   )
   if (paras.length === 0) return { started: true }
@@ -84,7 +102,8 @@ export function startPaperTranslation(
       sender.send(IPC.translateProgress, event)
     },
     () => runState.shouldStop(paperId) || sender.isDestroyed(),
-    force
+    force,
+    source
   )
     .catch(() => {
       /* 顶层失败已按段上报过 */
