@@ -314,11 +314,15 @@
   transition: width 0.3s ease;
 }
 
+/* 标题译名：封面上印的是原文标题，这一行是给人一眼读懂的，最多两行 */
 .lib-card-zh {
-  font-size: 11.5px;
-  white-space: nowrap;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--fg);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .lib-card-meta {
@@ -545,4 +549,15 @@
 
 .lib-card-status .lib-pin--inline {
   margin-right: 3px;
+}
+
+/* 后台补标题译名时，标题旁一句淡色提示，轻轻闪一下表示在进行 */
+.lib-titles-busy {
+  font-size: 11.5px;
+  animation: lib-busy 1.6s ease-in-out infinite;
+}
+
+@keyframes lib-busy {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
 }

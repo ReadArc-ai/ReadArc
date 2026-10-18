@@ -8,10 +8,11 @@ import { ARXIV_ID_RE } from './sources/arxiv'
 import type Database from 'better-sqlite3'
 import { arxivSource } from './sources/arxiv'
 import { semanticScholarSource } from './sources/semanticscholar'
+import { openAlexSource } from './sources/openalex'
 import { dedupResults, explainWhy } from './dedup'
 import type { Fetcher, SearchOutcome, SearchResult, SourceAdapter, SourceStatus } from './types'
 
-export const SOURCES: SourceAdapter[] = [arxivSource, semanticScholarSource]
+export const SOURCES: SourceAdapter[] = [arxivSource, semanticScholarSource, openAlexSource]
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const RETRY_DELAYS_MS = [500, 1500]
@@ -33,6 +34,8 @@ export interface SearchDeps {
   timeoutMs?: number
   /** 源 slug → 冷却截止时间戳；测试注入以隔离 */
   cooldowns?: Map<string, number>
+  /** 查哪些源；不给就是全部（测试按需缩小） */
+  sources?: SourceAdapter[]
 }
 
 function isTimeout(err: unknown): boolean {
@@ -149,6 +152,7 @@ export async function searchAll(
   const now = deps.now ?? Date.now
   const timeoutMs = deps.timeoutMs ?? SOURCE_TIMEOUT_MS
   const cooldowns = deps.cooldowns ?? defaultCooldowns
+  const sources = deps.sources ?? SOURCES
 
   let anyLive = false
   let anyCached = false
@@ -161,11 +165,13 @@ export async function searchAll(
       count,
       error
     })
-    // 粘贴 arXiv 编号时只查 arXiv：其它源按「1706」「03762」这种数字碎片做关键词匹配，出来的全是无关结果
-    if (ARXIV_ID_RE.test(query) && adapter.slug !== 'arxiv') {
+    // 粘贴 arXiv 编号时只查能按编号直接取的源（arXiv、Semantic Scholar）：
+    // 其它源按「1706」「03762」这种数字碎片做关键词匹配，出来的全是无关结果
+    if (ARXIV_ID_RE.test(query) && adapter.slug !== 'arxiv' && adapter.slug !== 's2') {
       return { status: status(0, null), results: [] }
     }
-    const cached = cacheGet(db, query, adapter.slug, now())
+    const cacheSlug = adapter.cacheVersion ? `${adapter.slug}@${adapter.cacheVersion}` : adapter.slug
+    const cached = cacheGet(db, query, cacheSlug, now())
     if (cached) {
       anyCached = true
       return { status: status(cached.length, null), results: cached }
@@ -177,7 +183,7 @@ export async function searchAll(
     try {
       const results = await searchWithRetry(adapter, query, fetcher, sleep, timeoutMs)
       anyLive = true
-      cachePut(db, query, adapter.slug, results, now())
+      cachePut(db, query, cacheSlug, results, now())
       return { status: status(results.length, null), results }
     } catch (err) {
       // 单源失败不拖垮整次检索——空结果 + 错误标注（源标签上显示）
@@ -188,7 +194,7 @@ export async function searchAll(
   }
 
   const compose = (final: boolean): SearchOutcome => {
-    const parts = SOURCES.map(
+    const parts = sources.map(
       (a) =>
         settled.get(a.slug) ?? {
           status: { slug: a.slug, name: a.name, count: 0, error: null, pending: true },
@@ -222,10 +228,10 @@ export async function searchAll(
   }
 
   await Promise.all(
-    SOURCES.map(async (adapter) => {
+    sources.map(async (adapter) => {
       const part = await one(adapter)
       settled.set(adapter.slug, part)
-      if (onPartial && settled.size < SOURCES.length) onPartial(compose(false))
+      if (onPartial && settled.size < sources.length) onPartial(compose(false))
     })
   )
   return compose(true)

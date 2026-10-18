@@ -168,4 +168,17 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX idx_paper_tags_tag ON paper_tags(tag);
   `,
+  // 论文库的标题译名：按目标语言各存一份；source 记下译的是哪个标题，标题改了就当没译过。
+  // text 为空串表示模型给不出译名（专名之类），不再反复去问
+  `
+  CREATE TABLE paper_titles (
+    paper_id   TEXT NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
+    lang       TEXT NOT NULL,
+    source     TEXT NOT NULL,
+    text       TEXT NOT NULL,
+    model      TEXT,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (paper_id, lang)
+  );
+  `,
 ]

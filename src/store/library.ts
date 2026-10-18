@@ -8,6 +8,8 @@ import { errText } from '../lib/errors'
 export type Collection = 'all' | 'unread' | 'reading' | 'done'
 
 interface LibraryState {
+  /** 正在后台补标题译名（论文库标题旁给一句提示） */
+  titlesTranslating: boolean
   papers: PaperRow[]
   /** 读库失败（多半是数据库损坏）：界面必须说出来，不能装作是空库 */
   loadError: string | null
@@ -33,6 +35,9 @@ interface LibraryState {
   remove(paperId: string): Promise<void>
 }
 
+/** 正在补标题译名：同一时间只发一次 */
+let titleJob: Promise<void> | null = null
+
 export const useLibrary = create<LibraryState>((set, get) => ({
   papers: [],
   loadError: null,
@@ -41,6 +46,7 @@ export const useLibrary = create<LibraryState>((set, get) => ({
   tag: null,
   editing: null,
   thumbs: {},
+  titlesTranslating: false,
 
   load: async () => {
     let papers: PaperRow[]
@@ -55,6 +61,20 @@ export const useLibrary = create<LibraryState>((set, get) => ({
     // 选中的标签已经没有论文了（最后一篇被删或改掉了这个标签）：回到不筛选
     const tag = get().tag
     set({ papers, loadError: null, tag: tag && papers.some((p) => p.tags?.includes(tag)) ? tag : null })
+    // 有论文还没有标题译名就让主进程补一趟（只发标题；没接模型时主进程什么都不发），译出新的再刷新
+    if (!titleJob && papers.some((p) => !p.title_tr && !p.title_zh)) {
+      set({ titlesTranslating: true })
+      titleJob = window.readarc
+        .translateTitles()
+        .then((n) => {
+          if (n > 0) void get().load()
+        })
+        .catch(() => {})
+        .finally(() => {
+          titleJob = null
+          set({ titlesTranslating: false })
+        })
+    }
   },
 
   /**
@@ -110,7 +130,7 @@ export function filterByQuery(papers: PaperRow[], query: string): PaperRow[] {
   const q = query.trim().toLowerCase()
   if (!q) return papers
   return papers.filter((p) =>
-    [p.title, p.title_zh, p.authors, p.source, p.arxiv_id, p.doi, p.year != null ? String(p.year) : null, ...(p.tags ?? [])]
+    [p.title, p.title_zh, p.title_tr, p.authors, p.source, p.arxiv_id, p.doi, p.year != null ? String(p.year) : null, ...(p.tags ?? [])]
       .filter(Boolean)
       .some((field) => String(field).toLowerCase().includes(q))
   )

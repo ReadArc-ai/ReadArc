@@ -63,6 +63,7 @@ function PaletteBody(): JSX.Element {
       return (
         p.title?.toLowerCase().includes(q) ||
         p.title_zh?.toLowerCase().includes(q) ||
+        p.title_tr?.toLowerCase().includes(q) ||
         p.authors?.toLowerCase().includes(q)
       )
     })
@@ -124,6 +125,7 @@ function PaletteBody(): JSX.Element {
       (p) =>
         p.title?.toLowerCase().includes(q) ||
         p.title_zh?.toLowerCase().includes(q) ||
+        p.title_tr?.toLowerCase().includes(q) ||
         p.authors?.toLowerCase().includes(q)
     ).length
     return Math.max(0, hits - PAPER_LIMIT)

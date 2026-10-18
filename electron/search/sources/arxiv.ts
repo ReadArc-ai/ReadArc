@@ -1,4 +1,4 @@
-/** arXiv 源：Atom XML，公开 API 无需密钥。粘贴 arXiv ID 也走这里（id_list）。 */
+/** arXiv 源：Atom XML，公开 API 无需密钥。粘贴 arXiv ID 时先读摘要页的元数据，取不到再走 id_list。 */
 import type { Fetcher, SearchResult, SourceAdapter } from '../types'
 import { sanitizeResults } from '../sanitize'
 
@@ -49,11 +49,52 @@ export function parseArxivAtom(xml: string): SearchResult[] {
   return sanitizeResults(results)
 }
 
+/**
+ * 论文摘要页（arxiv.org/abs/…）上的 citation_* 元数据 → 一条结果。
+ * 按编号查时先走这里：它和检索 API（export.arxiv.org）分开服务，API 排队或挂住时摘要页照样秒回
+ */
+export function parseArxivAbs(html: string, arxivId: string): SearchResult[] {
+  const metas = (name: string): string[] =>
+    [...html.matchAll(new RegExp(`<meta\\s+name="citation_${name}"\\s+content="([^"]*)"`, 'g'))].map((m) => decode(m[1]).replace(/\s+/g, ' ').trim())
+  const title = metas('title')[0]
+  if (!title) return []
+  const date = metas('date')[0] ?? ''
+  return sanitizeResults([
+    {
+      id: `arxiv:${arxivId}`,
+      title,
+      // 「Yao, Shunyu」→「Shunyu Yao」
+      authors: metas('author').map((a) => a.split(/\s*,\s*/).reverse().join(' ')),
+      year: Number(date.slice(0, 4)) || null,
+      source: 'arXiv',
+      url: `https://arxiv.org/abs/${arxivId}`,
+      pdfUrl: metas('pdf_url')[0] ?? `https://arxiv.org/pdf/${arxivId}`,
+      doi: metas('doi')[0] ?? null,
+      arxivId,
+      citations: null,
+      abstract: metas('abstract')[0] ?? null
+    }
+  ])
+}
+
 export const arxivSource: SourceAdapter = {
   slug: 'arxiv',
   name: 'arXiv',
   async search(query: string, fetcher: Fetcher, signal?: AbortSignal): Promise<SearchResult[]> {
     const idMatch = ARXIV_ID_RE.exec(query.trim())
+    if (idMatch) {
+      try {
+        const res = await fetcher(`https://arxiv.org/abs/${idMatch[1]}`, { signal })
+        if (res.status === 404) return []
+        if (res.ok) {
+          const hit = parseArxivAbs(await res.text(), idMatch[1])
+          if (hit.length > 0) return hit
+        }
+      } catch (err) {
+        if (signal?.aborted) throw err
+        // 摘要页取不到：退回检索 API
+      }
+    }
     const params = idMatch
       ? `id_list=${idMatch[1]}`
       : `search_query=all:${encodeURIComponent(query)}&sortBy=relevance`

@@ -24,6 +24,8 @@ export type Fetcher = (url: string, init?: RequestInit) => Promise<Response>
 export interface SourceAdapter {
   slug: string
   name: string
+  /** 结果规则改了就加一：缓存键带上它，旧规则缓存的结果（24 小时内）不再拿出来 */
+  cacheVersion?: number
   search(query: string, fetcher: Fetcher, signal?: AbortSignal): Promise<SearchResult[]>
 }
 

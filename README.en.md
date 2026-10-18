@@ -42,7 +42,7 @@ Most reference tools are good at collecting. ReadArc is about understanding. Onc
 | **Offline dictionary** | Double-click an English word for its meaning. Around 170,000 entries are available locally; a dictionary hit needs no network or tokens. |
 | **Summaries and reading insights** | Stream three-sentence summaries and structured reading notes, and explore conflicting claims across papers. |
 | **Highlights and Markdown notes** | Save highlights and annotations as local Markdown files for further organisation in Obsidian or Git. |
-| **Paper search and library** | Search arXiv and Semantic Scholar together, merge and deduplicate results, and download papers into your library in one click. Reading progress is saved automatically. |
+| **Paper search and library** | Search arXiv, Semantic Scholar and OpenAlex together, merge and deduplicate results, and download papers into your library in one click. Reading progress is saved automatically. |
 | **Your choice of models** | Bring your own API key for cloud services or OpenAI-compatible APIs, or connect local models through Ollama and LM Studio. Choose a model for each task. |
 | **Cost estimates and usage tracking** | Preview translation costs, confirm estimates above US$0.50 before proceeding, and check model usage at any time. |
 
@@ -97,7 +97,7 @@ open release/mac-arm64/ReadArc.app
 
 ## What a reading session looks like
 
-1. Drop in a local PDF, or search arXiv and Semantic Scholar and add a paper to your library.
+1. Drop in a local PDF, or search arXiv, Semantic Scholar and OpenAlex and add a paper to your library.
 2. Switch between the original, side-by-side and mirrored translation views. Double-click to look up a word. Select text to highlight it, write a note or ask the AI.
 3. Keep asking about a hard passage, or generate a whole-paper summary and structured reading notes. Answers keep citations you can follow back to the text.
 4. When you switch papers, reading position, anchors, cached translations and Markdown notes all stay on your machine, so you pick up where you left off.
@@ -127,7 +127,7 @@ Data leaves your device only when you use the feature that needs it:
 | Action | Sent to | What may be sent |
 | --- | --- | --- |
 | AI translation, questions, summaries | The model provider or local endpoint you chose | The paper text, context or screenshot needed for that task |
-| Paper search | arXiv, Semantic Scholar; the selected model when rewriting Chinese queries | Search terms or rewritten keywords |
+| Paper search | arXiv, Semantic Scholar, OpenAlex; the selected model when rewriting Chinese queries | Search terms or rewritten keywords |
 | Word lookup after an offline dictionary miss | The selected model | Lookup text and task context |
 | Model lists / local model detection | Configured endpoints or local model services | List requests, authenticated with an API key if required |
 | Proxy connection test | The configured proxy and Google connectivity endpoint | A test request without paper content |

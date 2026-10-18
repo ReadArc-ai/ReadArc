@@ -50,6 +50,7 @@ const bridge: ReadArcBridge = {
     return () => ipcRenderer.removeListener(IPC.openFiles, listener)
   },
   listPapers: () => ipcRenderer.invoke(IPC.libraryList),
+  translateTitles: () => ipcRenderer.invoke(IPC.libraryTranslateTitles),
   openPaper: (paperId: string) => ipcRenderer.invoke(IPC.paperOpen, paperId),
   deletePaper: (paperId: string) => ipcRenderer.invoke(IPC.paperDelete, paperId),
   showPaperMenu: (paperId: string) => ipcRenderer.send(IPC.paperMenu, paperId),

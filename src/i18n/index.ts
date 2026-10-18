@@ -598,6 +598,8 @@ const dict = {
   },
   'lib.empty.filter': { zh: '这个分类下还没有论文', en: 'No papers in this collection yet' },
   'lib.search': { zh: '搜索论文库…', en: 'Search your library…' },
+  'lib.et-al': { zh: '等', en: 'et al.' },
+  'lib.titles-busy': { zh: '正在翻译标题…', en: 'Translating titles…' },
   'search.examples': { zh: '试试这些', en: 'Try these' },
   'search.recent': { zh: '最近搜索', en: 'Recent' },
   'search.recent-clear': { zh: '清空', en: 'Clear' },

@@ -6,6 +6,8 @@ export interface PaperRow {
   file_path: string
   title: string | null
   title_zh: string | null
+  /** 标题按当前目标语言的自动译名（论文库显示用）；没有或与目标语言相同为 null */
+  title_tr?: string | null
   authors: string | null
   year: number | null
   source: string | null

@@ -5,6 +5,7 @@ import { flushSettings, loadSettings, patchSettings } from './settings-store'
 import { isSafeExternalUrl } from './safe-url'
 import { backfillArxivMeta, resumePendingLayouts, setLayoutNotifier, sweepOrphanCopies, sweepStaleFigures } from './library/service'
 import { absorbAskRouteIntoMain } from './config/main-model'
+import { translateLibraryTitles } from './translate/service'
 import { registerAllIpc } from './ipc'
 import { describeError, logStartup, reportFatal, startupLogPath } from './startup'
 import { enqueueOpenFiles, markRendererLoading, pdfPathsFromArgv, registerOpenFilesIpc } from './open-files'
@@ -308,11 +309,22 @@ app.whenReady().then(() => {
   } catch (err) {
     logStartup(`resumePendingLayouts skipped: ${describeError(err)}`)
   }
-  // 库里缺作者等信息的 arXiv 论文：启动稍后在后台补全（不抢启动时的网络和磁盘）
+  // 库里缺作者等信息的 arXiv 论文：启动稍后在后台补全（不抢启动时的网络和磁盘）；
+  // 标题译名也提前补上，打开论文库时就已经是中文标题。补全改了标题的，再补一次译名
+  const libraryChanged = (): void => {
+    for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(IPC.libraryChanged)
+  }
+  const translateTitles = (): Promise<void> =>
+    translateLibraryTitles()
+      .then((n) => {
+        if (n > 0) libraryChanged()
+      })
+      .catch(() => {})
+  setTimeout(() => void translateTitles(), 3000)
   setTimeout(() => {
-    void backfillArxivMeta(() => {
-      for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(IPC.libraryChanged)
-    }).catch(() => {})
+    void backfillArxivMeta(libraryChanged)
+      .catch(() => {})
+      .then(translateTitles)
   }, 8000)
   // 清掉没人引用的 PDF 副本（历史重复导入的旧副本、强杀留下的半截拷贝）
   try {

@@ -3,7 +3,7 @@ import type Database from 'better-sqlite3'
 import { openDb, replaceBlocks, upsertPaper, monthUsage, getBlocks, getTranslation, putTranslation, type BlockRow } from '../db'
 import { blockId, sha1, simhash64 } from '../docengine/anchor'
 import { glossaryFromText, EMPTY_GLOSSARY } from './glossary'
-import { cachedTranslations, isUntranslatable, looksReferenceEntry, looksUntranslated, stripMetaPrefix, makeBatches, parseBatchOutput, setTranslateFocus, translateBlock, translateOutline, translateParas, PROMPT_VERSION } from './translator'
+import { cachedTranslations, isUntranslatable, looksReferenceEntry, looksUntranslated, stripMetaPrefix, makeBatches, parseBatchOutput, setTranslateFocus, translateBlock, translateOutline, translateParas, translateTitles, PROMPT_VERSION } from './translator'
 import type { RouterContext, AttemptRunner } from '../model/router'
 import { DEFAULT_ROUTES } from '../config/tasks-config'
 import type { ProviderDef } from '../config/providers-config'
@@ -315,6 +315,20 @@ describe('translateOutline（目录单独批量翻译）', () => {
     })
     const n = await translateOutline(db, { ctx, glossary: EMPTY_GLOSSARY, runner }, paperId, () => {})
     expect(n).toBe(1)
+  })
+})
+
+describe('translateTitles（论文库标题译名）', () => {
+  it('一批标题一次调用；照抄原文或缺行的不返回', async () => {
+    const calls: string[] = []
+    const runner: AttemptRunner = async (_ep, _model, req) => {
+      calls.push(JSON.stringify(req.messages))
+      return { text: '1) 注意力就是你所需要的一切\n2) ReAct: Synergizing Reasoning and Acting in Language Models', usage: { inputTokens: 1, outputTokens: 1 } }
+    }
+    const out = await translateTitles({ ctx, glossary: EMPTY_GLOSSARY, runner }, ['Attention Is All You Need', 'ReAct: Synergizing Reasoning and Acting in Language Models', 'Third'], 'zh')
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toContain('3) Third')
+    expect([...out.texts.entries()]).toEqual([[0, '注意力就是你所需要的一切']])
   })
 })
 

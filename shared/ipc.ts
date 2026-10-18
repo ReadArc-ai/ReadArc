@@ -113,6 +113,7 @@ export const IPC = {
   openFilesTake: 'open:files-take',
   libraryPick: 'library:pick',
   libraryList: 'library:list',
+  libraryTranslateTitles: 'library:translate-titles',
   paperOpen: 'paper:open',
   paperBlocksUpdated: 'paper:blocks-updated',
   layoutProgress: 'layout:progress',
@@ -202,6 +203,8 @@ export interface ReadArcBridge {
   /** 应用运行中收到的外部打开请求 */
   onOpenFiles(cb: (paths: string[]) => void): () => void
   listPapers(): Promise<PaperRow[]>
+  /** 给论文库补标题译名（当前目标语言，只发标题）；返回新译出的条数 */
+  translateTitles(): Promise<number>
   openPaper(paperId: string): Promise<PaperBundle | null>
   /** 主进程在后台给老论文补完页边块后通知：当前论文就重新拉一次块列表 */
   onPaperBlocksUpdated(cb: (paperId: string) => void): () => void

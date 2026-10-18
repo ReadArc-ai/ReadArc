@@ -269,13 +269,10 @@ function CoverGrid({ papers }: { papers: PaperRow[] }): JSX.Element {
                 ✕
               </span>
               <Cover p={p} active={p.id === currentId} />
-              {p.title_zh && <span className="lib-card-zh">{p.title_zh}</span>}
+              {/* 手填的中文标题优先，没有就用自动译名 */}
+              {(p.title_zh || p.title_tr) && <span className="lib-card-zh">{p.title_zh || p.title_tr}</span>}
               {/* 没有作者信息就不占这一行：一个孤零零的「—」看着像坏了 */}
-              {p.authors && (
-                <span className="lib-card-meta">
-                  {(JSON.parse(p.authors) as string[]).slice(0, 2).join(', ')}
-                </span>
-              )}
+              {authorNames(p).length > 0 && <span className="lib-card-meta">{authorLine(p, t('lib.et-al'))}</span>}
               <span className="lib-card-status" style={{ color: status.color }}>
                 {p.pinned_at && (
                   <span className="lib-pin lib-pin--inline" title={t('lib.pinned')}>
@@ -292,6 +289,22 @@ function CoverGrid({ papers }: { papers: PaperRow[] }): JSX.Element {
       </div>
     </div>
   )
+}
+
+/** 作者名单：去掉不含字母的杂项（arXiv 元数据里偶尔混进单独的「:」） */
+function authorNames(p: PaperRow): string[] {
+  try {
+    const names = p.authors ? (JSON.parse(p.authors) as unknown[]) : []
+    return names.filter((n): n is string => typeof n === 'string' && /\p{L}/u.test(n))
+  } catch {
+    return []
+  }
+}
+
+/** 卡片作者行：两位以内全写，多了写「第一作者 等」（年份封面上已经有了） */
+function authorLine(p: PaperRow, etAl: string): string {
+  const names = authorNames(p)
+  return names.length > 2 ? `${names[0]} ${etAl}` : names.join(', ')
 }
 
 function ListView({ papers }: { papers: PaperRow[] }): JSX.Element {
@@ -330,12 +343,12 @@ function ListView({ papers }: { papers: PaperRow[] }): JSX.Element {
                   </span>
                 )}
                 {p.title}
-                {p.title_zh && <span className="lib-td-zh">{p.title_zh}</span>}
+                {(p.title_zh || p.title_tr) && <span className="lib-td-zh">{p.title_zh || p.title_tr}</span>}
                 <TagChips tags={p.tags} />
               </td>
               {showAuthors && (
                 <td className="lib-td-dim">
-                  {p.authors ? JSON.parse(p.authors).slice(0, 2).join(', ') : '—'}
+                  {authorNames(p).slice(0, 2).join(', ') || '—'}
                 </td>
               )}
               {showYearSource && <td className="lib-td-dim">{p.year ?? '—'}</td>}
@@ -402,9 +415,12 @@ export function LibraryScreen(): JSX.Element {
   // 库大了以后靠滚是找不到论文的：标题 / 作者 / 年份就地过滤
   const [query, setQuery] = useState('')
 
+  // 目标语言改了也重新加载：标题译名按语言各存一份
+  const targetLang = useApp((s) => s.targetLang)
+  const titlesTranslating = useLibrary((s) => s.titlesTranslating)
   useEffect(() => {
     void load()
-  }, [load])
+  }, [load, targetLang])
 
   // 右键菜单里的「删除论文…」回到既有确认流程；「编辑信息…」打开编辑框；切换置顶后刷新
   useEffect(() => {
@@ -472,6 +488,7 @@ export function LibraryScreen(): JSX.Element {
           <header className="screen-header">
             <h1>{t('library.title')}</h1>
             <span className="screen-hint">{filtered.length}</span>
+            {titlesTranslating && <span className="screen-hint lib-titles-busy">{t('lib.titles-busy')}</span>}
             <span style={{ flex: 1 }} />
             <span className="lib-search">
               <input

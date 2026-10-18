@@ -15,7 +15,9 @@ import { migrateTranslationsBySimhash,
   putTranslation,
   recordProgress,
   replaceBlocks,
+  saveTitleTranslation,
   searchBlocks,
+  untranslatedTitles,
   setLayoutState,
   upsertPaper,
   type BlockRow
@@ -364,3 +366,36 @@ describe('论文信息编辑与库内组织', () => {
   })
 })
 
+describe('论文库标题译名', () => {
+  const setTitle = (title: string): void => {
+    db.prepare('UPDATE papers SET title = ? WHERE id = ?').run(title, fileHash)
+  }
+
+  it('没译过的标题列出来；译过的随列表带出，按目标语言分开', () => {
+    setTitle('Attention Is All You Need')
+    expect(untranslatedTitles(db, 'zh')).toEqual([{ id: fileHash, title: 'Attention Is All You Need' }])
+    saveTitleTranslation(db, fileHash, 'zh', 'Attention Is All You Need', '注意力就是你所需要的', 'm')
+    expect(untranslatedTitles(db, 'zh')).toEqual([])
+    expect(listPapers(db, 1, 1, 'zh')[0].title_tr).toBe('注意力就是你所需要的')
+    expect(listPapers(db, 1, 1, 'ja')[0].title_tr).toBeNull()
+    expect(untranslatedTitles(db, 'ja')).toHaveLength(1)
+  })
+
+  it('标题改了旧译名作废；空译名表示不用译，不显示也不再列出', () => {
+    setTitle('Old Title')
+    saveTitleTranslation(db, fileHash, 'zh', 'Old Title', '旧标题', 'm')
+    setTitle('New Title')
+    expect(listPapers(db, 1, 1, 'zh')[0].title_tr).toBeNull()
+    expect(untranslatedTitles(db, 'zh')).toHaveLength(1)
+    saveTitleTranslation(db, fileHash, 'zh', 'New Title', '', 'm')
+    expect(listPapers(db, 1, 1, 'zh')[0].title_tr).toBeNull()
+    expect(untranslatedTitles(db, 'zh')).toEqual([])
+  })
+
+  it('删论文时译名一起删掉', () => {
+    setTitle('T')
+    saveTitleTranslation(db, fileHash, 'zh', 'T', '题', 'm')
+    deletePaperData(db, fileHash)
+    expect(db.prepare('SELECT COUNT(*) AS n FROM paper_titles').get()).toEqual({ n: 0 })
+  })
+})

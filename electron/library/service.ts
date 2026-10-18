@@ -312,6 +312,12 @@ function firstPageText(paperId: string): Pick<BlockRow, 'page' | 'text'>[] {
   return appDb().prepare('SELECT page, text FROM blocks WHERE paper_id = ? AND page = 1 ORDER BY block_order').all(paperId) as Pick<BlockRow, 'page' | 'text'>[]
 }
 
+/** 只有一个词的标题（「Mental-LLM」）多半是把冒号后的副标题丢了 */
+export function looksTruncatedTitle(title: string | null): boolean {
+  const t = (title ?? '').trim()
+  return t.length > 0 && !/\s/.test(t)
+}
+
 /**
  * 本地导入的 arXiv 论文只有版面识别出的标题（小型大写会被拆成「REAC T」），作者、年份都是空的。
  * 首页水印能认出 arXiv 号的，从 arXiv 取一次权威的标题、作者、年份补上；用户手改过的论文不动。
@@ -320,10 +326,18 @@ function firstPageText(paperId: string): Pick<BlockRow, 'page' | 'text'>[] {
 export async function enrichFromArxiv(paperId: string): Promise<boolean> {
   const paper = getPaper(appDb(), paperId)
   if (!paper || paper.meta_edited) return false
-  if (paper.authors && paper.year && paper.source) return false
+  const complete = !!(paper.authors && paper.year && paper.source)
+  if (complete && !looksTruncatedTitle(paper.title)) return false
   const arxivId = detectArxivId(paper, firstPageText(paperId))
   if (!arxivId) return false
   const hit = await lookupPaperMeta({ arxiv_id: arxivId })
+  if (complete) {
+    // 信息齐全、只是标题被截短（OpenAlex 等来源只留了冒号前的名字）：arXiv 标题以它开头且更长才换
+    const short = (paper.title ?? '').trim().toLowerCase()
+    if (!hit.title || hit.title.length <= short.length || !hit.title.toLowerCase().startsWith(short)) return false
+    enrichPaperMeta(appDb(), paperId, { title: hit.title, arxiv_id: hit.arxiv_id ?? arxivId.replace(/v\d+$/, '') })
+    return true
+  }
   enrichPaperMeta(appDb(), paperId, {
     title: hit.title,
     authors: hit.authors.length > 0 ? JSON.stringify(hit.authors) : null,
@@ -341,7 +355,7 @@ export async function enrichFromArxiv(paperId: string): Promise<boolean> {
  */
 export async function backfillArxivMeta(onUpdated: () => void, gapMs = 3000): Promise<void> {
   for (const p of allPaperRows(appDb())) {
-    if (p.meta_edited || (p.authors && p.year && p.source)) continue
+    if (p.meta_edited || (p.authors && p.year && p.source && !looksTruncatedTitle(p.title))) continue
     try {
       if (await enrichFromArxiv(p.id)) onUpdated()
       else continue
@@ -537,7 +551,7 @@ export function saveProgress(paperId: string, update: ProgressUpdate): void {
 
 export function allPapers() {
   // 进度口径跟阅读器对齐：当前术语表版本 + 当前目标语言的提示词版本（译文缓存按语言错开）
-  return listPapers(appDb(), loadGlossary().version, promptVersionFor(PROMPT_VERSION, targetLang()))
+  return listPapers(appDb(), loadGlossary().version, promptVersionFor(PROMPT_VERSION, targetLang()), targetLang())
 }
 
 /** 检索结果一键入库：已在库（DOI/arXiv 命中）直接返回；否则下载 PDF → 导入 → 补元数据。 */
@@ -552,6 +566,14 @@ export interface AddProgress {
 const DOWNLOAD_STALL_MS = 30_000
 /** 单篇 PDF 的体积上限：整个响应体要先进内存，必须有个刹车。 */
 const MAX_PDF_BYTES = 200 * 1024 * 1024
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname
+  } catch {
+    return url
+  }
+}
 
 export async function addSearchResult(
   result: SearchResult,
@@ -577,9 +599,10 @@ export async function addSearchResult(
     res = await fetchPublicDownload(result.pdfUrl, { signal: ctrl.signal })
   } catch (err) {
     clearTimeout(stall)
+    // 连不上（被墙、DNS、TLS 握手失败）别把「TypeError: fetch failed」原样给人看
     throw ctrl.signal.aborted
       ? new Error(uiText('download.timeout', { seconds: Math.round(DOWNLOAD_STALL_MS / 1000) }), { cause: err })
-      : (err as Error)
+      : new Error(uiText('download.unreachable', { host: hostOf(result.pdfUrl) }), { cause: err })
   }
   if (!res.ok) {
     clearTimeout(stall)

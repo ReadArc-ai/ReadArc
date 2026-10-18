@@ -43,6 +43,7 @@ const messages = {
   'download.private': { zh: '下载地址指向本机、内网或保留地址，已拒绝请求。', en: 'The download address points to a local, private or reserved address. The request was blocked.' },
   'download.verify': { zh: '无法验证下载服务器地址', en: 'Could not verify the download server address' },
   'download.redirects': { zh: 'PDF 下载重定向超过 {n} 次，已停止下载。', en: 'PDF download stopped after more than {n} redirects.' },
+  'download.unreachable': { zh: '连不上 {host}，可能需要代理，或打开论文原始页面手动下载。', en: 'Could not reach {host}. It may need a proxy, or open the paper’s page and download it manually.' },
   'download.timeout': { zh: 'PDF 下载超时（{seconds} 秒无响应）', en: 'PDF download timed out (no response for {seconds} seconds)' },
   'download.http': { zh: 'PDF 下载失败（HTTP {status}）', en: 'PDF download failed (HTTP {status})' },
   'download.size': { zh: 'PDF 超过 {mb} MB，已停止下载。', en: 'The PDF exceeds {mb} MB. Download stopped.' },

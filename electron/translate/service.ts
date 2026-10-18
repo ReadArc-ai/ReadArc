@@ -11,9 +11,9 @@ import { isFreeAttempt, resolveChain, runTask, type RouterContext } from '../mod
 import { TranslationRunState } from './run-state'
 import { estimateTranslation, CONFIRM_THRESHOLD_USD } from '../model/pricing'
 import { appDb } from '../library/service'
-import { recordUsage, getBlocks, getPaper, getTranslation } from '../db'
+import { recordUsage, getBlocks, getPaper, getTranslation, saveTitleTranslation, untranslatedTitles } from '../db'
 import { loadGlossary } from './glossary'
-import { cachedTranslations, PROMPT_VERSION, translateBlock, translateOutline, translateParas } from './translator'
+import { cachedTranslations, isUntranslatable, PROMPT_VERSION, translateBlock, translateOutline, translateParas, translateTitles } from './translator'
 import { unitBlocks } from './units'
 import { promptVersionFor } from './target-lang'
 import { preservesInlineContent } from '../../shared/translation-integrity'
@@ -174,4 +174,51 @@ export async function retranslateOne(paperId: string, blockId: string): Promise<
     true
   )
   return { text: out.text }
+}
+
+const TITLE_BATCH = 30
+let titlesRunning: Promise<number> | null = null
+
+/**
+ * 给论文库补标题译名（当前目标语言）：只发标题，一批一次调用。
+ * 没接翻译模型就什么都不发；标题本来就是目标语言的直接记成「不用译」。
+ * 同一时间只跑一趟，返回新写入的条数（调用方据此刷新论文库）
+ */
+export function translateLibraryTitles(): Promise<number> {
+  titlesRunning ??= runLibraryTitles().finally(() => {
+    titlesRunning = null
+  })
+  return titlesRunning
+}
+
+async function runLibraryTitles(): Promise<number> {
+  const db = appDb()
+  const lang = targetLang()
+  const rows = untranslatedTitles(db, lang)
+  if (rows.length === 0) return 0
+  let changed = 0
+  const pending = rows.filter((r) => {
+    if (!isUntranslatable(r.title, lang)) return true
+    saveTitleTranslation(db, r.id, lang, r.title, '', null)
+    return false
+  })
+  const ctx = buildRouterContext()
+  if (pending.length === 0 || resolveChain('translate', ctx).length === 0) return changed
+  const deps = { ctx, glossary: loadGlossary() }
+  for (let i = 0; i < pending.length; i += TITLE_BATCH) {
+    const batch = pending.slice(i, i + TITLE_BATCH)
+    try {
+      const out = await translateTitles(deps, batch.map((r) => r.title), lang)
+      recordUsage(db, 'translate', out.usage.slug, out.model, out.usage.input, out.usage.output)
+      batch.forEach((r, k) => {
+        const text = out.texts.get(k) ?? ''
+        saveTitleTranslation(db, r.id, lang, r.title, text, out.model)
+        if (text) changed++
+      })
+    } catch {
+      // 断网、额度用完：这一批留着，下次打开论文库再补
+      break
+    }
+  }
+  return changed
 }

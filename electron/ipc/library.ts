@@ -26,7 +26,7 @@ import {
 } from '../library/service'
 import { readPdfAsset, type PdfAssetKind } from '../docengine/pdf-assets'
 import { loadSettings, patchSettings } from '../settings-store'
-import { stopPaperTranslation } from '../translate/service'
+import { stopPaperTranslation, translateLibraryTitles } from '../translate/service'
 
 export function registerLibraryIpc(): void {
   ipcMain.handle(IPC.libraryImport, async (e, paths: string[]) => {
@@ -51,6 +51,8 @@ export function registerLibraryIpc(): void {
     return canceled ? [] : filePaths
   })
   ipcMain.handle(IPC.libraryList, () => allPapers())
+  // 标题译名失败（没接模型、断网）不算错误：论文库照常显示原标题
+  ipcMain.handle(IPC.libraryTranslateTitles, () => translateLibraryTitles().catch(() => 0))
   ipcMain.handle(IPC.paperOpen, (e, paperId: string) => {
     // quick 导入后模型识别还没做完（或上次退出时中断）：接着做，做完会推 paperBlocksUpdated
     // 正在看的这篇插到队首（升级后多篇一起重新识别时不用排在最后）

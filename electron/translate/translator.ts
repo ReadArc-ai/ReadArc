@@ -754,3 +754,51 @@ export async function translateOutline(
   })
   return stored
 }
+
+/**
+ * 标题短，通用的「像不像译文」判断对短文本很宽（作者栏照抄也放过）。标题单独严一点：
+ * 和原文一样的不算；目标是中日韩时译文里得有该文字（日文标题可能全是汉字，汉字也算）
+ */
+function isTitleTranslation(src: string, out: string, lang: TargetLang): boolean {
+  const norm = (x: string): string => x.toLowerCase().replace(/[\s\p{P}]+/gu, '')
+  if (!out || norm(out) === norm(src)) return false
+  const c = scriptCounts(out)
+  if (lang === 'zh') return c.han > 0
+  if (lang === 'ja') return c.kana + c.han > 0
+  if (lang === 'ko') return c.hangul > 0
+  return !looksUntranslated(src, out, lang)
+}
+
+/**
+ * 论文库的标题译名：一批标题打包成一次调用（格式同目录标题「编号) 译文」）。
+ * 返回 下标 → 译文；答成原文、别的语言或缺行的不返回，调用方记成「没有译名」，不反复再问
+ */
+export async function translateTitles(
+  deps: TranslateDeps,
+  titles: string[],
+  lang: TargetLang = targetLang()
+): Promise<{ texts: Map<number, string>; model: string; usage: { slug: string; input: number; output: number } }> {
+  const L = LANG_TEXT[lang]
+  const out = await runTask(
+    'translate',
+    {
+      messages: [
+        { role: 'system', content: [L.titles, L.headingsRules].join('\n\n') },
+        { role: 'user', content: titles.map((t, i) => `${i + 1}) ${t.replace(/\s+/g, ' ').trim()}`).join('\n') }
+      ],
+      temperature: 0.2
+    },
+    deps.ctx,
+    () => {},
+    deps.runner
+  )
+  const texts = new Map<number, string>()
+  for (const line of out.result.text.split('\n')) {
+    const m = /^\s*(\d+)\s*[)）.、．]\s*(.+)$/.exec(line)
+    if (!m) continue
+    const i = Number(m[1]) - 1
+    const text = m[2].trim()
+    if (i >= 0 && i < titles.length && isTitleTranslation(titles[i], text, lang)) texts.set(i, text)
+  }
+  return { texts, model: out.model, usage: { slug: out.attempt.slug, input: out.result.usage.inputTokens, output: out.result.usage.outputTokens } }
+}

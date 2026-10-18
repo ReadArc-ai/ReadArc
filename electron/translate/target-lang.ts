@@ -32,6 +32,8 @@ interface LangText {
     /** 目录标题批量翻译 */
     headings: string
     headingsRules: string
+    /** 论文库的论文标题批量翻译（输出格式同目录标题） */
+    titles: string
     summary: string
     summaryRetry: string
     summaryFail: (model: string) => string
@@ -67,6 +69,7 @@ const ZH: LangText = {
     fragmentRules: '规则：只输出译文本身，不复述原文，不加任何前缀、解释或引号；公式、引用标号、URL 与专有名词原样保留。',
     placeholderStrict: (need) => `特别注意：原文里的行内公式占位符与上下标标记是 ${need}，译文必须各保留一次、原样照抄在对应位置，不能漏掉，也不能自己新增其他 ⟦f…⟧ 编号或 ^…^、~…~ 标记。`,
     headings: '你是学术论文章节标题翻译引擎。逐行翻译给出的标题列表。',
+    titles: '你是学术论文标题翻译引擎。逐行把给出的论文标题译成中文，译名简洁、像中文论文的标题；模型名、方法名（如 ReAct、Transformer）保留原文；不要在译名后括注原文。',
     headingsRules: '规则：每行输出「编号) 译文」，编号与输入一致；保留标题中的章节编号（如 3.2）与专有名词原样写法；不加解释、不增减行。',
     summary:
       '用恰好三句中文概括这篇论文：第一句说它做了什么、第二句说方法与关键结果、第三句必须指出适用边界或局限。' +
@@ -106,6 +109,7 @@ function forLanguage(name: string): LangText {
     fragmentRules: 'Rules: output only the translation, without repeating the source or adding prefixes, explanations or quotes; keep formulas, citation numbers, URLs and proper nouns as written.',
     placeholderStrict: (need) => `Important: the inline formula placeholders and super/subscript markers in the source are ${need}. Keep each of them exactly once, verbatim, at the corresponding position; do not drop any and do not invent other ⟦f…⟧ numbers or ^…^ / ~…~ markers.`,
     headings: `You translate academic paper section headings into ${name}. Translate the numbered list line by line.`,
+    titles: `You translate academic paper titles into ${name}. Translate the numbered list line by line, concise and natural as a paper title; keep model and method names (such as ReAct, Transformer) as written; do not append the original title in parentheses.`,
     headingsRules: 'Rules: output each line as "N) translation" with the same number as the input; keep section numbers (such as 3.2) and proper nouns as written; no explanations, do not add or drop lines.',
     summary:
       `Summarize this paper in exactly three ${name} sentences: the first says what it does, the second the method and key result, the third must state its scope or limitations. ` +

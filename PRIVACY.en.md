@@ -1,6 +1,6 @@
 # ReadArc Privacy Policy
 
-Updated: 2026-10-14
+Updated: 2026-10-15
 
 This policy covers source builds and the Mac App Store edition of ReadArc. ReadArc is a local-first paper reader with no ReadArc-operated accounts, cloud sync, advertising, telemetry or model-request relay. You choose the model provider. When you use cloud AI, the content needed for the task is sent to the endpoint you configure.
 
@@ -15,9 +15,10 @@ Imported PDF copies, extracted text, images and thumbnails, reading progress, hi
 | Feature | Recipient | Data sent |
 | --- | --- | --- |
 | AI translation, outline translation, questions, summaries, generated notes and cross-paper analysis | The model provider or custom endpoint selected for that task | Required paper text, titles, context, questions, conversation history and explanation-style settings; image questions also include the selected screenshot |
+| Translated titles in the library | The model provider or custom endpoint selected for translation | Paper titles only, used to show translated titles in your library; nothing is sent if no translation model is set up |
 | Double-click word lookup | The bundled offline dictionary | No network request |
 | Translating selected text | The bundled dictionary for matching words; otherwise the selected model | The selected text when a model is called |
-| Paper search | arXiv and Semantic Scholar; the selected model is also used when rewriting a Chinese query into English | Search terms or rewritten keywords |
+| Paper search | arXiv, Semantic Scholar and OpenAlex; the selected model is also used when rewriting a Chinese query into English | Search terms or rewritten keywords |
 | Importing search results | The paper's source website | A PDF download request |
 | arXiv HTML versions and paper details | arXiv (arxiv.org) | The paper's arXiv ID (read from the arXiv stamp on the PDF's first page), to download the official HTML version and its images and to fill in the title, authors and year in your library; no paper content is sent. Downloads are cached on your device for offline reading. The Bilingual and Translation views can switch to “PDF” in the toolbar |
 | “Fill from ID” when editing paper info | Semantic Scholar or arXiv | The DOI or arXiv ID you entered |

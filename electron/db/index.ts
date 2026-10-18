@@ -336,7 +336,8 @@ export function allPaperRows(db: Database.Database): PaperRow[] {
 export function listPapers(
   db: Database.Database,
   glossaryVersion: number,
-  promptVersion: number
+  promptVersion: number,
+  lang = 'zh'
 ): PaperRow[] {
   const rows = db
     .prepare(
@@ -350,10 +351,11 @@ export function listPapers(
               AND t.prompt_version = @promptVersion
               AND trim(t.text) <> '' AND t.text NOT LIKE '%think>%'
               AND inline_content_matches(b2.text, t.text)) AS trans_done,
-         (SELECT json_group_array(tag) FROM (SELECT tag FROM paper_tags WHERE paper_id = p.id ORDER BY tag)) AS tags_json
+         (SELECT json_group_array(tag) FROM (SELECT tag FROM paper_tags WHERE paper_id = p.id ORDER BY tag)) AS tags_json,
+         (SELECT NULLIF(pt.text, '') FROM paper_titles pt WHERE pt.paper_id = p.id AND pt.lang = @lang AND pt.source = p.title) AS title_tr
        FROM papers p ORDER BY COALESCE(p.last_opened_at, p.added_at) DESC`
     )
-    .all({ glossaryVersion, promptVersion }) as (PaperRow & { tags_json: string | null })[]
+    .all({ glossaryVersion, promptVersion, lang }) as (PaperRow & { tags_json: string | null })[]
   return rows.map(({ tags_json, ...p }) => ({ ...p, tags: parseTags(tags_json) }))
 }
 
@@ -445,4 +447,30 @@ export function putTranslation(
      VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(block_id, glossary_version, prompt_version) DO UPDATE SET text = excluded.text, model = excluded.model`
   ).run(blockId, glossaryVersion, promptVersion, model, text, Date.now())
+}
+
+/** 还没有当前目标语言译名的论文标题（标题改过的也算） */
+export function untranslatedTitles(db: Database.Database, lang: string): { id: string; title: string }[] {
+  return db
+    .prepare(
+      `SELECT p.id, p.title FROM papers p
+        WHERE trim(COALESCE(p.title, '')) <> ''
+          AND NOT EXISTS (SELECT 1 FROM paper_titles pt WHERE pt.paper_id = p.id AND pt.lang = ? AND pt.source = p.title)
+        ORDER BY COALESCE(p.last_opened_at, p.added_at) DESC`
+    )
+    .all(lang) as { id: string; title: string }[]
+}
+
+export function saveTitleTranslation(
+  db: Database.Database,
+  paperId: string,
+  lang: string,
+  source: string,
+  text: string,
+  model: string | null
+): void {
+  db.prepare(
+    `INSERT INTO paper_titles (paper_id, lang, source, text, model, created_at) VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT (paper_id, lang) DO UPDATE SET source = excluded.source, text = excluded.text, model = excluded.model, created_at = excluded.created_at`
+  ).run(paperId, lang, source, text, model, Date.now())
 }

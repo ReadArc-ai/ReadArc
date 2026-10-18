@@ -163,17 +163,14 @@ function SearchSummaryCard({
   )
 }
 
-/** 还没搜过时的起始页：示例查询 + 最近搜索，点一下就搜 */
-const EXAMPLES: { zh: string; en: string }[] = [
-  { zh: '检索增强生成 评测', en: 'retrieval-augmented generation evaluation' },
-  { zh: 'diffusion models survey', en: 'diffusion models survey' },
-  { zh: '长上下文 大语言模型', en: 'long-context language models' },
-  { zh: '2210.03629', en: '2210.03629' }
-]
+/**
+ * 还没搜过时的起始页：示例查询 + 最近搜索，点一下就搜。
+ * 示例都用英文主题和 arXiv 编号：中文主题要先靠模型改写成英文，模型不可用时示例就搜不出东西
+ */
+const EXAMPLES = ['retrieval-augmented generation', 'diffusion models survey', 'long-context language models', '2210.03629']
 
 function SearchStart({ onPick }: { onPick: (q: string) => void }): JSX.Element {
   const t = useT()
-  const lang = useApp((s) => s.lang)
   const recent = useSearch((s) => s.recent)
   const clearRecent = useSearch((s) => s.clearRecent)
   return (
@@ -181,14 +178,11 @@ function SearchStart({ onPick }: { onPick: (q: string) => void }): JSX.Element {
       <div className="search-start-group">
         <span className="search-start-label">{t('search.examples')}</span>
         <div className="search-start-chips">
-          {EXAMPLES.map((e) => {
-            const q = lang === 'zh' ? e.zh : e.en
-            return (
-              <button key={q} className="search-chip" onClick={() => onPick(q)}>
-                {q}
-              </button>
-            )
-          })}
+          {EXAMPLES.map((q) => (
+            <button key={q} className="search-chip" onClick={() => onPick(q)}>
+              {q}
+            </button>
+          ))}
         </div>
       </div>
       {recent.length > 0 && (
