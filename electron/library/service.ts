@@ -3,7 +3,7 @@ import { uiText } from '../i18n'
 import { app } from 'electron'
 import { createHash } from 'node:crypto'
 import type Database from 'better-sqlite3'
-import { basename, join } from 'node:path'
+import { basename, join, sep } from 'node:path'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import {
   appendBlocks,
@@ -281,7 +281,7 @@ export function deletePaper(paperId: string): boolean {
   deletePaperData(appDb(), paperId)
   const papersDir = join(app.getPath('userData'), 'papers')
   try {
-    if (paper.file_path.startsWith(papersDir + '/')) rmSync(paper.file_path, { force: true })
+    if (paper.file_path.startsWith(papersDir + sep)) rmSync(paper.file_path, { force: true })
   } catch (err) {
     console.warn('delete pdf copy failed:', err)
   }

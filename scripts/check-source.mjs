@@ -11,7 +11,9 @@ const required = ['LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'SECURITY.md', 
   '.nvmrc', '.github/workflows/ci.yml', 'build/icon.icns', 'build/icon.png',
   'build/entitlements.mas.plist', 'build/entitlements.mas.inherit.plist', 'build/entitlements.mas.loginhelper.plist',
   'resources/dict/ecdict.sqlite', 'resources/dict/LICENSE.ECDICT', 'resources/models/README.md',
-  'scripts/download-model.mjs', 'scripts/build-dict.mjs', 'scripts/verify-package.cjs', 'scripts/verify-package.test.cjs', 'scripts/check-source.mjs']
+  'scripts/download-model.mjs', 'scripts/build-dict.mjs', 'scripts/verify-package.cjs', 'scripts/verify-package.test.cjs', 'scripts/check-source.mjs',
+  'scripts/build-appx-assets.mjs', 'scripts/fetch-win-natives.mjs', 'build/appx/StoreLogo.scale-100.png',
+  'build/appx/Square44x44Logo.scale-100.png', 'build/appx/Square150x150Logo.scale-100.png', 'build/appx/Wide310x150Logo.scale-100.png']
 for (const name of required) {
   if (!files.has(name) || !existsSync(resolve(root, name))) errors.push(`缺少可提交的发布文件：${name}`)
 }

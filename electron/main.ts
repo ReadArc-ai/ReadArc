@@ -18,6 +18,14 @@ function backgroundColorFor(settings: PersistedSettings): string {
   return dark ? '#171717' : '#f8f8f8'
 }
 
+/** Windows / Linux 右上角系统按钮的底色与图标色，取自标题栏的 --bg0 / --fg2；
+ *  高度比标题栏少 1px，露出底边分隔线 */
+function titleBarOverlayFor(dark: boolean): Electron.TitleBarOverlayOptions {
+  return dark
+    ? { color: '#171717', symbolColor: '#b4b4b4', height: 39 }
+    : { color: '#f8f8f8', symbolColor: '#555555', height: 39 }
+}
+
 
 /**
  * 应用菜单。不设置的话 Electron 会挂上它自带的默认菜单——里面有指向 electronjs.org
@@ -155,9 +163,11 @@ function createWindow(): void {
     minHeight: 480,
     show: false,
     backgroundColor: backgroundColorFor(settings),
-    // 40px 自绘标题栏，macOS 交通灯内嵌
-    titleBarStyle: isMac ? 'hiddenInset' : 'default',
+    // 40px 自绘标题栏：macOS 交通灯内嵌；Windows / Linux 隐藏系统标题栏与菜单栏，
+    // 只留右上角的系统按钮（菜单快捷键照常生效）
+    titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
     trafficLightPosition: isMac ? { x: 12, y: 13 } : undefined,
+    titleBarOverlay: isMac ? undefined : titleBarOverlayFor(nativeTheme.shouldUseDarkColors),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -177,7 +187,20 @@ function createWindow(): void {
   win.once('ready-to-show', () => showOnce('ready-to-show'))
   const fallback = setTimeout(() => showOnce('fallback timer'), 2500)
   win.once('closed', () => clearTimeout(fallback))
-  win.webContents.once('did-finish-load', () => logStartup('renderer did-finish-load'))
+  if (!isMac) {
+    // 设置里切主题会改 themeSource，跟随系统时系统切换深浅色，两者都触发 updated
+    const syncOverlay = (): void => {
+      if (!win.isDestroyed()) win.setTitleBarOverlay(titleBarOverlayFor(nativeTheme.shouldUseDarkColors))
+    }
+    nativeTheme.on('updated', syncOverlay)
+    win.once('closed', () => nativeTheme.off('updated', syncOverlay))
+  }
+  win.webContents.once('did-finish-load', () => {
+    logStartup('renderer did-finish-load')
+    // 带 titleBarOverlay 的首个窗口在显示前不出帧，ready-to-show 永远不来；
+    // 背景色已跟随主题，页面加载完就显示，不必干等兜底定时器
+    if (!isMac) showOnce('did-finish-load')
+  })
   win.webContents.on('did-fail-load', (_e, code, desc, url, isMainFrame) => {
     if (!isMainFrame) return
     logStartup(`renderer did-fail-load ${code} ${desc} ${url}`)

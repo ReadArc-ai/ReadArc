@@ -6,11 +6,11 @@ const { join, dirname } = require('node:path')
 const { createPackage } = require('@electron/asar')
 const verify = require('./verify-package.cjs')
 
-async function packaged(extra, omit, run) {
+async function packaged(extra, omit, run, platform = 'mas') {
   const dir = mkdtempSync(join(tmpdir(), 'readarc-package-check-'))
   try {
     const source = join(dir, 'source')
-    const resources = join(dir, 'ReadArc.app', 'Contents', 'Resources')
+    const resources = platform === 'mas' ? join(dir, 'ReadArc.app', 'Contents', 'Resources') : join(dir, 'resources')
     mkdirSync(resources, { recursive: true })
     const files = ['out/main/index.js', 'out/main/app.js', 'out/preload/index.js', 'out/renderer/index.html',
       'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'PRIVACY.md', 'PRIVACY.en.md',
@@ -21,7 +21,7 @@ async function packaged(extra, omit, run) {
       writeFileSync(path, 'test fixture')
     }
     await createPackage(source, join(resources, 'app.asar'))
-    await run({ appOutDir: dir, electronPlatformName: 'mas',
+    await run({ appOutDir: dir, electronPlatformName: platform,
       packager: { appInfo: { productFilename: 'ReadArc' } } })
   } finally {
     rmSync(dir, { recursive: true, force: true })
@@ -30,6 +30,12 @@ async function packaged(extra, omit, run) {
 
 test('accept a runtime-only MAS archive', async () => {
   await packaged([], null, (context) => assert.doesNotReject(verify(context)))
+})
+test('accept a runtime-only Windows archive', async () => {
+  await packaged([], null, (context) => assert.doesNotReject(verify(context)), 'win32')
+})
+test('reject local files in a Windows archive', async () => {
+  await packaged(['local/notes.md'], null, (context) => assert.rejects(verify(context), /非运行时或敏感文件/), 'win32')
 })
 test('reject local files, old packages and credentials before signing', async () => {
   for (const file of ['release/old.pkg', 'local/notes.md', 'design/prototype.html',

@@ -1,4 +1,4 @@
-# ReadArc 打包配置（GitHub 渠道 + Mac App Store）
+# ReadArc 打包配置（GitHub 渠道 + Mac App Store + Microsoft Store）
 appId: com.brant.readarc
 productName: ReadArc
 # 构建号（CFBundleVersion）：只增不减，跨版本也接着往上编；1.0.1 上架的是 11，1.0.2 用 16（12、14 提审后撤回，13 上传后 Apple 处理失败，15 被拒）。
@@ -108,11 +108,36 @@ win:
   # Windows 用 .ico 或 1024px png（electron-builder 自己转），给 .icns 会打包失败
   icon: build/icon.png
   target: [nsis]
+  # 资源管理器「打开方式」与 Zotero 把 PDF 作为命令行参数交给我们（见 open-files.ts）
+  fileAssociations:
+    - ext: pdf
+      name: PDF Document
+      role: Viewer
   files:
     # 至少一个正向规则，避免平台配置只有排除项时默认加入 **/*。
     - out/**
     - '!node_modules/onnxruntime-node/bin/napi-v6/{darwin,linux}/**'
     - '!node_modules/better-sqlite3/prebuilds/{darwin,linux,linuxmusl,android}-*'
+    # x64 与 arm64 分开出包，每个包只带本架构的原生二进制（onnxruntime 单架构就有 70MB）
+    - '!node_modules/onnxruntime-node/bin/napi-v6/win32/!(${arch})/**'
+    - '!node_modules/better-sqlite3/prebuilds/win32-!(${arch}).node'
+    - '!node_modules/@napi-rs/canvas-win32-!(${arch})-msvc/**'
+
+# Microsoft Store 构建：npm run dist:appx（只能在 Windows 上打）。包不签名，上传后由商店签名。
+# identityName / publisher / publisherDisplayName 必须与 Partner Center →「产品标识」页逐字一致，
+# 否则上传时报包标识不匹配。磁贴与任务栏图标在 build/appx/，由 npm run appx:assets 生成
+appx:
+  identityName: ReadArc
+  publisher: CN=00000000-0000-0000-0000-000000000000
+  publisherDisplayName: ReadArc
+  applicationId: ReadArc
+  displayName: ReadArc
+  # 磁贴底色与图标底板同色（--brand-ink），图标缩小居中后看不出拼接
+  backgroundColor: '#101418'
+  languages: [zh-CN, en-US]
+  # 最低支持 Windows 10 1809（仍在长期服务支持的最早版本）
+  minVersion: 10.0.17763.0
+  maxVersionTested: 10.0.26100.0
 
 linux:
   icon: build/icon.png

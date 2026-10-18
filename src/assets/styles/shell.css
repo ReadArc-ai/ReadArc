@@ -31,6 +31,11 @@
   padding-left: 78px;
 }
 
+.titlebar--overlay {
+  /* Windows / Linux 的最小化、最大化、关闭按钮画在右上角，宽度由系统给出 */
+  padding-right: calc(100% - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100%) + 10px);
+}
+
 .titlebar button,
 .titlebar input {
   -webkit-app-region: no-drag;

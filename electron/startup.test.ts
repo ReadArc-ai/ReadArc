@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
@@ -10,6 +11,8 @@ vi.mock('electron', () => ({
 }))
 vi.mock('node:fs', () => ({ appendFileSync: mocks.append, mkdirSync: mocks.mkdir }))
 import { initializeStartup, reportFatal } from './startup'
+
+const LOG = join('/test/userData', 'startup.log')
 
 beforeEach(() => {
   vi.resetAllMocks()
@@ -26,15 +29,15 @@ afterEach(() => {
 describe('依赖加载前的启动诊断', () => {
   it('先写日志并安装异常处理器，再加载业务依赖', () => {
     initializeStartup(() => {
-      expect(mocks.append).toHaveBeenCalledWith('/test/userData/startup.log', expect.stringContaining('bootstrap entered'))
+      expect(mocks.append).toHaveBeenCalledWith(LOG, expect.stringContaining('bootstrap entered'))
       expect(process.on).toHaveBeenCalledWith('uncaughtException', expect.any(Function))
       expect(process.on).toHaveBeenCalledWith('unhandledRejection', expect.any(Function))
     })
-    expect(mocks.append).toHaveBeenLastCalledWith('/test/userData/startup.log', expect.stringContaining('main module loaded'))
+    expect(mocks.append).toHaveBeenLastCalledWith(LOG, expect.stringContaining('main module loaded'))
   })
   it('ready 前加载依赖失败，也有日志和系统错误框', () => {
     initializeStartup(() => { throw new Error('Cannot find module: example') })
-    expect(mocks.append).toHaveBeenCalledWith('/test/userData/startup.log', expect.stringContaining('main module load failed: Error: Cannot find module: example'))
+    expect(mocks.append).toHaveBeenCalledWith(LOG, expect.stringContaining('main module load failed: Error: Cannot find module: example'))
     expect(mocks.errorBox).toHaveBeenCalledWith('ReadArc', expect.stringContaining('Cannot find module: example'))
     expect(mocks.windows).not.toHaveBeenCalled()
   })

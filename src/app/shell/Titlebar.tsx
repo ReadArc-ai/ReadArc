@@ -15,7 +15,7 @@ export function Titlebar(): JSX.Element {
   const isMac = window.readarc?.platform === 'darwin'
 
   return (
-    <header className={`titlebar${isMac ? ' titlebar--mac' : ''}`}>
+    <header className={`titlebar ${isMac ? 'titlebar--mac' : 'titlebar--overlay'}`}>
       <div className="titlebar-brand">
         <BrandMark />
         <span>ReadArc</span>

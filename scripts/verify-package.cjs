@@ -11,7 +11,8 @@ module.exports = async function verifyPackage(context) {
   if (!existsSync(archive)) throw new Error('打包产物缺少 app.asar')
   const allowed = new Set(['out', 'node_modules', 'package.json', 'LICENSE', 'NOTICE',
     'THIRD_PARTY_NOTICES.md', 'PRIVACY.md', 'PRIVACY.en.md', 'resources'])
-  const files = listPackage(archive).map((file) => file.replace(/^\//, ''))
+  // Windows 上 listPackage 返回 \out\main\index.js 这样的反斜杠路径
+  const files = listPackage(archive).map((file) => file.replace(/\\/g, '/').replace(/^\//, ''))
   for (const file of files) {
     if (!allowed.has(file.split('/')[0]) ||
         (file.startsWith('resources/') && !['resources/dict', 'resources/dict/LICENSE.ECDICT'].includes(file)) ||
