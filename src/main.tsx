@@ -14,8 +14,16 @@ import { isBuiltinPersona, type CustomPersona } from '../shared/models'
 import './assets/app.css'
 
 async function bootstrap(): Promise<void> {
-  // 渲染前先水合持久化设置，避免主题/语言闪变
   try {
+    // 菜单动作要在第一个 await 之前订阅：主进程新建窗口后在 did-finish-load 就会发来（帮助 → 隐私政策），
+    // 晚订阅就丢了
+    window.readarc.onMenuAction((action) => {
+      if (action === 'settings') useApp.getState().setSettingsOpen(true)
+      else if (action === 'privacy') useApp.getState().setSettingsOpen(true, 'privacy')
+      else
+        void usePaper.getState().pickAndImport()
+    })
+    // 渲染前先水合持久化设置，避免主题/语言闪变
     const settings = await window.readarc.getSettings()
     useApp.setState({
       theme: settings.theme,
@@ -96,12 +104,6 @@ async function bootstrap(): Promise<void> {
     })
     window.readarc.onSearchProgress((e) => useSearch.getState().applyProgress(e))
     window.readarc.onGenDelta((e) => useGen.getState().apply(e.kind, e.delta, e.paperId, e.reset))
-    window.readarc.onMenuAction((action) => {
-      if (action === 'settings') useApp.getState().setSettingsOpen(true)
-      else if (action === 'privacy') useApp.getState().setSettingsOpen(true, 'privacy')
-      else
-        void usePaper.getState().pickAndImport()
-    })
     window.addEventListener('online', () => useApp.getState().setOffline(false))
     window.addEventListener('offline', () => useApp.getState().setOffline(true))
     // 兜底拦截：标题栏拖拽区等 React 树外区域的文件拖放不许触发默认导航

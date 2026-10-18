@@ -32,6 +32,30 @@ afterEach(async () => {
   rmSync(base, { recursive: true, force: true })
 })
 
+describe('厂商开户链接', () => {
+  const originalMas = Object.getOwnPropertyDescriptor(process, 'mas')
+  afterEach(() => {
+    if (originalMas) Object.defineProperty(process, 'mas', originalMas)
+    else Reflect.deleteProperty(process, 'mas')
+  })
+  const urls = (): Record<string, string | undefined> => {
+    setup('')
+    return Object.fromEntries(modelState(roots).providers.map((p) => [p.slug, p.signupUrl]))
+  }
+
+  it('App Store 版只保留本地运行时的下载页', () => {
+    Object.defineProperty(process, 'mas', { configurable: true, value: true })
+    const u = urls()
+    expect(u['deepseek']).toBeUndefined()
+    expect(u['openai']).toBeUndefined()
+    expect(u['ollama']).toBe('https://ollama.com')
+  })
+  it('源码构建版照常给出云厂商链接', () => {
+    Object.defineProperty(process, 'mas', { configurable: true, value: undefined })
+    expect(urls()['deepseek']).toBe('https://platform.deepseek.com')
+  })
+})
+
 describe('删除来源', () => {
   it('一并清掉指向它的默认模型、按功能指定的模型和代理绑定，别的不动', () => {
     setup(`providers:

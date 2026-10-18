@@ -109,7 +109,11 @@ function buildAppMenu(): void {
       submenu: [
         { role: 'minimize', label: L('最小化', 'Minimize') },
         { role: 'zoom', label: L('缩放', 'Zoom') },
-        ...(isMac ? ([{ type: 'separator' }, { role: 'front', label: L('前置全部窗口', 'Bring All to Front') }] as Electron.MenuItemConstructorOptions[]) : [])
+        ...(isMac ? ([{ type: 'separator' }, { role: 'front', label: L('前置全部窗口', 'Bring All to Front') }] as Electron.MenuItemConstructorOptions[]) : []),
+        { type: 'separator' },
+        // macOS 上关掉主窗口后应用仍在运行，菜单里必须能把它重新打开。
+        // 不配快捷键：⌘1–⌘3 是渲染端的页面切换，⌘0 是 PDF 缩放复位
+        { label: APP_NAME, click: () => void showMainWindow() }
       ]
     },
     {
@@ -117,17 +121,10 @@ function buildAppMenu(): void {
       label: L('帮助', 'Help'),
       submenu: [
         { label: L('隐私政策', 'Privacy policy'), click: () => {
-          let win = BrowserWindow.getAllWindows()[0]
-          if (!win) {
-            createWindow()
-            win = BrowserWindow.getAllWindows()[0]
-            win?.webContents.once('did-finish-load', () => win.webContents.send(IPC.menuOpenPrivacy))
-          } else {
-            if (win.isMinimized()) win.restore()
-            win.show()
-            win.focus()
-            win.webContents.send(IPC.menuOpenPrivacy)
-          }
+          const existing = BrowserWindow.getAllWindows().length > 0
+          const win = showMainWindow()
+          if (existing) win.webContents.send(IPC.menuOpenPrivacy)
+          else win.webContents.once('did-finish-load', () => win.webContents.send(IPC.menuOpenPrivacy))
         } },
         { label: L('官网', 'Website'), click: () => void shell.openExternal(site) },
         { label: L('GitHub 项目主页', 'GitHub project'), click: () => void shell.openExternal(repo) },
@@ -234,6 +231,19 @@ function createWindow(): void {
   }
 }
 
+/** 已有主窗口就带到前台（含首帧未到、尚未显示的窗口），没有就新建一个 */
+function showMainWindow(): BrowserWindow {
+  const existing = BrowserWindow.getAllWindows()[0]
+  if (!existing) {
+    createWindow()
+    return BrowserWindow.getAllWindows()[0]
+  }
+  if (existing.isMinimized()) existing.restore()
+  existing.show()
+  existing.focus()
+  return existing
+}
+
 /**
  * 单实例：两个进程共用同一个 SQLite 库与 settings.json——设置会互相覆盖，
  * 还可能对同一篇论文各翻译一遍（各花各的钱）。拿不到锁就退出，
@@ -336,11 +346,8 @@ app.whenReady().then(() => {
     /* 清理失败不影响启动 */
   }
 
-  app.on('activate', () => {
-    const wins = BrowserWindow.getAllWindows()
-    if (wins.length === 0) createWindow()
-    else wins[0].show() // 已有窗口但还没显示出来（首帧没到）：点 Dock 图标就把它拉出来
-  })
+  // 点 Dock 图标：没有窗口就新建；已有窗口但首帧没到还没显示的，也把它拉出来
+  app.on('activate', () => void showMainWindow())
 })
 
 app.on('window-all-closed', () => {

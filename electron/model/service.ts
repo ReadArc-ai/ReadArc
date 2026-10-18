@@ -82,7 +82,9 @@ export function modelState(roots: ConfigRoots = defaultRoots()): ModelState {
       official: true,
       local: p.local ?? false,
       hasKey: p.keyEnv ? resolveApiKey(p.keyEnv, roots) !== null : (p.local ?? false),
-      signupUrl: p.signupUrl
+      // App Store 版不放云厂商的开户/充值页链接（App Review 3.1.1 视为站外购买引导）；
+      // 本地运行时的下载页是免费软件，照常保留
+      signupUrl: p.local || process.mas !== true ? p.signupUrl : undefined
     })
   }
 
