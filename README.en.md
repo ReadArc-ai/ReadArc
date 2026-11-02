@@ -6,10 +6,6 @@
 
 ### Read papers, effortlessly.
 
-<a href="https://apps.apple.com/cn/app/readarc/id6803315888?mt=12&amp;l=en-GB">
-  <img src=".github/campaigns/holiday-2026-en.webp" alt="ReadArc Mid-Autumn and National Day offer: free on the Mac App Store, September 25–October 25, 2026" width="920">
-</a>
-
 A local-first AI desktop app for research reading: side-by-side translation with the layout preserved, answers that point back to the source, Markdown notes, and a genuinely free choice of models.
 
 [![CI](https://github.com/ReadArc-ai/ReadArc/actions/workflows/ci.yml/badge.svg)](https://github.com/ReadArc-ai/ReadArc/actions/workflows/ci.yml)
@@ -21,7 +17,7 @@ A local-first AI desktop app for research reading: side-by-side translation with
 
 <img src=".github/screenshots/en/01-reader.webp" alt="ReadArc side-by-side reading view" width="920">
 
-**[Get it free on the Mac App Store](https://apps.apple.com/cn/app/readarc/id6803315888?mt=12&l=en-GB) · [Website](https://readarc.ai/en/)**
+**[Get it on the Mac App Store](https://apps.apple.com/cn/app/readarc/id6803315888?mt=12&l=en-GB) · [Website](https://readarc.ai/en/)**
 
 <sub>The open-source build and the App Store build have the same features. Papers and notes are stored locally; AI requests go directly to your chosen service.</sub>
 
@@ -61,11 +57,11 @@ Most reference tools are good at collecting. ReadArc is about understanding. Onc
 
 ### Mac App Store
 
-For people who want it to just work: Apple handles installation and automatic updates, no development setup needed. Get the App Store version free during our Mid-Autumn & National Day offer, September 25–October 25, 2026.
+For people who want it to just work: Apple handles installation and automatic updates, no development setup needed. It is a one-time purchase: US$2.99 in the US, CNY 18 in China, and other regions follow the store price.
 
-**[Get ReadArc free on the Mac App Store →](https://apps.apple.com/cn/app/readarc/id6803315888?mt=12&l=en-GB)**
+**[Get ReadArc on the Mac App Store →](https://apps.apple.com/cn/app/readarc/id6803315888?mt=12&l=en-GB)**
 
-This month-long offer covers the app itself; cloud model API usage is billed separately by your chosen provider. The link opens the China storefront in English.
+Cloud model API usage is billed separately by your chosen provider. The link opens the China storefront in English.
 
 ### Build from source · free
 
@@ -151,7 +147,7 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing. Bugs and fea
 <details>
 <summary><strong>Does the App Store build have more features than the source build?</strong></summary>
 
-No. Both come from the same source and have the same features. The App Store build provides a signed, convenient install and automatic updates. It is free to get during this Mid-Autumn & National Day offer.
+No. Both come from the same source and have the same features. The App Store build provides a signed, convenient install and automatic updates.
 
 </details>
 
