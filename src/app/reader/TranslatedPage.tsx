@@ -14,6 +14,7 @@ import { buildLine, inkRuns, inkXForChar, pickToken, tokenize, wordWithinToken, 
 import { parseBbox, sharedTokens, rangeFromTokens, snapToSentenceStart, snapToSentenceEnd, renderInline, isBodyPara, isCenteredHeading, type InlineCtx } from './page-text'
 import { parseInlines, placeholdersMatch, repairPlaceholders } from '../../../shared/inline-formula'
 import { PageInfo } from './PdfPage'
+import { figureClusterKey, figureLayout } from '../../../shared/paper-flow'
 
 
 export function FitBlock({
@@ -361,10 +362,30 @@ export function showWordInk(pageEl: HTMLElement, layer: HTMLElement, box: { left
 }
 
 /** 图/表/公式：原版截图原位摆放。 */
-export function TpImage({ block, paperId }: { block: BlockRow; paperId: string }): JSX.Element | null {
+export function TpImage({ block, paperId, stripKey }: { block: BlockRow; paperId: string; stripKey?: string }): JSX.Element | null {
   const src = useFigureSrc(paperId, block.block_id)
   if (!src) return null
-  return <img className="tp-img" src={src} alt="" />
+  if (block.kind === 'equation') return <img className="tp-img" src={src} alt="" />
+  return (
+    <img
+      className="tp-img flow-zoomable"
+      src={src}
+      alt=""
+      onClick={(e) => {
+        // 切开的长图放大整张，不是点到的那一块
+        if (stripKey) {
+          void window.readarc.getFigure(paperId, stripKey).then((whole) => {
+            if (!whole) return
+            const probe = new Image()
+            probe.onload = () => useApp.getState().setLightbox({ src: whole, width: probe.naturalWidth, height: probe.naturalHeight })
+            probe.src = whole
+          })
+          return
+        }
+        useApp.getState().setLightbox({ src, width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight })
+      }}
+    />
+  )
 }
 
 /**
@@ -565,11 +586,20 @@ export function TranslatedPage({
 
   // 槽位几何一律用 PDF 点：原 bbox 高度与「需要的高度」取大者，碰撞推挤后
   // 超出原页底的页面加长，样式再按加长后的页高换算成百分比
+  const figLayout = useMemo(() => figureLayout(blocks), [blocks])
+  const stripKeys = useMemo(() => {
+    const keys = new Map<string, string>()
+    for (const [id, c] of figLayout.clusterOf) keys.set(id, figureClusterKey(c.blocks[0].block_id))
+    return keys
+  }, [figLayout])
   const { slots, pageHeight } = useMemo(() => {
     const boxes: SlotBox[] = []
     // 页脚一带的页边块（页码、页脚）不当障碍物：否则正文被推到它下面，页码夹在正文中间
     const footMargins: SlotBox[] = []
+    // 版面模型同时框出整图和碎块时只摆整图，碎块盖在上面只会挡住它
+    const { duplicates } = figLayout
     for (const b of blocks) {
+      if (duplicates.has(b.block_id)) continue
       const bbox = parseBbox(b)
       if (!bbox) continue
       const [x, y, w, h] = bbox
@@ -601,7 +631,7 @@ export function TranslatedPage({
     const height = contentBottom > info.height ? contentBottom : info.height
     for (const m of footMargins) m.y += height - info.height
     return { slots: [...placed, ...footMargins], pageHeight: height }
-  }, [blocks, info, needs, rules])
+  }, [figLayout, blocks, info, needs, rules])
 
   // 译文页比原文页长：把这一页的字号下限整体往下调一档再排，直到等高或到了下限，和原文页保持对齐。
   // 表格页几十个小格每格多一点就会把整页撑长，逐格长高又会让上下错位
@@ -731,7 +761,7 @@ export function TranslatedPage({
         if (s.fixed) {
           return (
             <div key={s.b.block_id} className="tp-slot" style={style}>
-              <TpImage block={s.b} paperId={paperId} />
+              <TpImage block={s.b} paperId={paperId} stripKey={stripKeys.get(s.b.block_id)} />
             </div>
           )
         }

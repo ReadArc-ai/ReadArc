@@ -10,6 +10,13 @@ export type Screen = 'reader' | 'library' | 'discover' | 'onboard'
 export type Tier = 'sm' | 'md' | 'lg'
 /** page = 原版对照（pdf.js 整页渲染 + 平行译文列）；orig/zh 为重排视图 */
 /** page = 原版对照；bilingual = 流式双语（默认）；zh = 流式只看译文；orig = 原版页 */
+/** 放大查看的图 */
+export interface LightboxImage {
+  src: string
+  width: number
+  height: number
+}
+
 export type ReaderView = 'page' | 'bilingual' | 'zh' | 'orig'
 export type PanelTab = 'chat' | 'notes'
 export type PanelDock = 'right' | 'bottom'
@@ -69,6 +76,11 @@ interface AppState {
   toggleSummaryCollapsed(): void
   /** 双击单词弹内置词典释义（不花 token） */
   wordLookup: boolean
+  /** 正在放大查看的图（null = 没开） */
+  lightbox: LightboxImage | null
+  setLightbox(next: LightboxImage | null): void
+  metaTitleLookup: boolean
+  setMetaTitleLookup(next: boolean): void
   setWordLookup(on: boolean): void
   /** 截图提问：框选模式（工具栏按钮进入，框完或 Esc 退出） */
   cropMode: boolean
@@ -182,6 +194,13 @@ export const useApp = create<AppState>((set, get) => ({
     window.readarc?.patchSettings({ chatReasoning })
   },
 
+  lightbox: null,
+  setLightbox: (lightbox) => set({ lightbox }),
+  metaTitleLookup: true,
+  setMetaTitleLookup: (metaTitleLookup) => {
+    set({ metaTitleLookup })
+    window.readarc?.patchSettings({ metaTitleLookup })
+  },
   wordLookup: true,
   setWordLookup: (wordLookup) => {
     set({ wordLookup })

@@ -37,7 +37,7 @@ export const CROP_SCALE = 4
  * 裁剪算法版本：改了裁法（比如加上向墨迹外扩）就 +1，存量论文的截图会在下次打开时重裁。
  * 只靠倍率标记不够——倍率没变但裁法变了，老图会一直带着被切掉的图注。
  */
-export const CROP_VERSION = 3
+export const CROP_VERSION = 4
 
 /** 内嵌于模型 metadata 的 25 类；运行时读取失败用这份镜像 */
 const FALLBACK_LABELS = [

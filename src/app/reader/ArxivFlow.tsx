@@ -10,6 +10,7 @@ import type { BlockRow, FlowUnitInput } from '../../../shared/models'
 import { parseArxivHtml, type FlowUnit } from '../../lib/arxiv-html'
 import { usePaper, type FlowOutlineItem } from '../../store/paper'
 import { useApp } from '../../store/app'
+import { useT } from '../../i18n'
 import { renderInline } from './page-text'
 import type { FlowMode } from './FlowView'
 
@@ -108,6 +109,9 @@ function arxivAsset(paperId: string, src: string): Promise<string | null> {
  */
 function RawHtml({ as: Tag = 'div', html, className, paperId, ...rest }: { as?: 'div' | 'p' | 'span'; html: string; className?: string; paperId: string } & Record<`data-${string}`, string | number>): JSX.Element {
   const ref = useRef<HTMLElement | null>(null)
+  const t = useT()
+  const failedLabel = t('flow.img-failed')
+  const retryingLabel = t('flow.img-retrying')
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
@@ -134,27 +138,65 @@ function RawHtml({ as: Tag = 'div', html, className, paperId, ...rest }: { as?: 
     }
     const imgs = el.querySelectorAll<HTMLImageElement>('img[data-arxiv-src]')
     if (imgs.length === 0) return () => cleanups.forEach((f) => f())
+    // 取不到（断网、arXiv 限流）要让人看得见、能重试：只留一块空白的话，既不知道缺图，也没有办法补
+    const load = (img: HTMLImageElement): void => {
+      const src = img.dataset.arxivSrc
+      if (!src) return
+      void arxivAsset(paperId, src).then((url) => {
+        if (!img.isConnected) return
+        const retry = img.nextElementSibling?.classList.contains('flow-img-retry') ? (img.nextElementSibling as HTMLButtonElement) : null
+        if (url) {
+          // 拿到了数据但解不开（文件坏了）也算失败，不能留一块空白
+          img.onerror = () => {
+            assetRequests.delete(`${paperId}|${src}`)
+            img.removeAttribute('src')
+            showFailed(img)
+          }
+          retry?.remove()
+          img.classList.remove('flow-img-failed')
+          img.src = url
+          return
+        }
+        showFailed(img)
+      })
+    }
+    const showFailed = (img: HTMLImageElement): void => {
+      const retry = img.nextElementSibling?.classList.contains('flow-img-retry') ? (img.nextElementSibling as HTMLButtonElement) : null
+      img.classList.add('flow-img-failed')
+      const button = retry ?? document.createElement('button')
+      button.type = 'button'
+      button.className = 'flow-img-retry'
+      button.disabled = false
+      button.textContent = failedLabel
+      button.onclick = (e) => {
+        e.stopPropagation()
+        button.disabled = true
+        button.textContent = retryingLabel
+        load(img)
+      }
+      if (!retry) img.after(button)
+    }
+    const onOnline = (): void => el.querySelectorAll<HTMLButtonElement>('.flow-img-retry').forEach((b) => b.click())
+    window.addEventListener('online', onOnline)
+    cleanups.push(() => window.removeEventListener('online', onOnline))
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
           if (!e.isIntersecting) continue
           const img = e.target as HTMLImageElement
           io.unobserve(img)
-          const src = img.dataset.arxivSrc
-          if (!src) continue
-          void arxivAsset(paperId, src).then((url) => {
-            if (url && img.isConnected) img.src = url
-          })
+          load(img)
         }
       },
-      { rootMargin: '800px' }
+      // root 必须是实际滚动的容器：默认的视口 rootMargin 穿不过 .reader-doc 的裁剪，图要等滚到眼前才开始取
+      { root: el.closest('.reader-doc'), rootMargin: '800px' }
     )
     imgs.forEach((img) => io.observe(img))
     return () => {
       io.disconnect()
       cleanups.forEach((f) => f())
     }
-  }, [html, paperId])
+  }, [html, paperId, failedLabel, retryingLabel])
   return <Tag ref={ref as never} className={className} {...rest} />
 }
 
@@ -203,7 +245,7 @@ function ArxivChunk({ index, items, mode, paperId, estimate, eager }: { index: n
   useEffect(() => {
     const el = ref.current
     if (!el || mounted) return
-    const io = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && setMounted(true), { rootMargin: '1600px' })
+    const io = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && setMounted(true), { root: el.closest('.reader-doc'), rootMargin: '1600px' })
     io.observe(el)
     return () => io.disconnect()
   }, [mounted])
@@ -287,7 +329,23 @@ export function ArxivFlow({ units, mode, paperId, blocks }: { units: FlowUnit[];
 
   // 页内链接（引用、图表编号）在本视图里跳；外链交给系统浏览器
   const onClick = (e: React.MouseEvent): void => {
-    const a = (e.target as Element).closest?.('a')
+    const target = e.target as Element
+    // 图里的图片放大看（作者栏的 ORCID 小图标之类不算）
+    const img = target.closest?.<HTMLImageElement>('.flow-ltx--figure img')
+    if (img?.getAttribute('src') && img.naturalWidth >= 48) {
+      e.preventDefault()
+      useApp.getState().setLightbox({ src: img.src, width: img.naturalWidth, height: img.naturalHeight })
+      return
+    }
+    const svg = target.closest?.<SVGSVGElement>('.flow-ltx--figure svg')
+    if (svg) {
+      const box = svg.getBoundingClientRect()
+      const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`
+      e.preventDefault()
+      useApp.getState().setLightbox({ src: url, width: box.width, height: box.height })
+      return
+    }
+    const a = target.closest?.('a')
     if (!a) return
     const href = a.getAttribute('href') ?? ''
     e.preventDefault()

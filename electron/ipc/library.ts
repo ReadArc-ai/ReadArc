@@ -13,7 +13,7 @@ import {
   allPapers,
   appDb,
   arxivHtmlFor,
-  enrichFromArxiv,
+  enrichPaperMetaAuto,
   arxivStore,
   deletePaper,
   ensureFigureQuality,
@@ -36,7 +36,7 @@ export function registerLibraryIpc(): void {
     // 有 arXiv 号的论文在后台先把网页版取下来（打开时流式视图直接读缓存），并补全标题、作者、年份
     for (const o of result.outcomes) {
       void arxivHtmlFor(o.paperId).catch(() => {})
-      void enrichFromArxiv(o.paperId)
+      void enrichPaperMetaAuto(o.paperId)
         .then((changed) => changed && !e.sender.isDestroyed() && e.sender.send(IPC.libraryChanged))
         .catch(() => {})
     }
@@ -137,8 +137,8 @@ export function registerLibraryIpc(): void {
     writeFileSync(join(dir, `${paperId}.png`), Buffer.from(m[1], 'base64'))
   })
   ipcMain.handle(IPC.figureGet, async (_e, paperId: string, blockIdStr: string) => {
-    // 块 id 后可带 :fN——段落里第 N 个行内公式的截图
-    if (!/^[0-9a-f]{40}$/.test(paperId) || !/^[0-9a-f]{40}:\d+:\d+(?::f\d{1,3})?$/.test(blockIdStr)) return null
+    // 块 id 后可带 :fN（段落里第 N 个行内公式的截图）或 :strip（切开的长图拼成的整张）
+    if (!/^[0-9a-f]{40}$/.test(paperId) || !/^[0-9a-f]{40}:\d+:\d+(?::f\d{1,3}|:strip)?$/.test(blockIdStr)) return null
     // 老倍率裁的截图先按当前倍率重裁一遍（一篇只做一次）；失败就照旧返回老图
     try {
       await ensureFigureQuality(paperId)

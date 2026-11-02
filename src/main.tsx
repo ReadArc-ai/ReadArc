@@ -30,6 +30,7 @@ async function bootstrap(): Promise<void> {
       paperDark: typeof settings.paperDark === 'boolean' ? settings.paperDark : null,
       summaryCollapsed: settings.summaryCollapsed === true,
       wordLookup: settings.wordLookup !== false,
+      metaTitleLookup: settings.metaTitleLookup !== false,
       chatReasoning: settings.chatReasoning === true,
       flowSource: settings.flowSource === 'pdf' ? 'pdf' : 'arxiv',
       zhTextScale:

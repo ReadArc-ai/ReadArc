@@ -10,6 +10,7 @@ import { extractPages } from '../docengine/extract'
 import { parsePages, type ParseResult } from '../docengine/layout'
 import { CROP_SCALE, CROP_VERSION, cropRegions, detectDocumentRegions, modelAvailable, type CropRequest } from '../docengine/layout-ml'
 import { inlineFigureKey, parseInlines } from '../../shared/inline-formula'
+import { figureClusterKey, figureLayout, type FigureCluster } from '../../shared/paper-flow'
 import { blocksFromRegions } from '../docengine/regions-to-blocks'
 import { marginBlocks, orphanBlocks } from '../docengine/margins'
 import { getBlocks, getPaper, markMarginsReady, migrateTranslationsBySimhash, replaceBlocks, setLayoutState, upsertPaper, type BlockRow } from '../db'
@@ -101,10 +102,17 @@ function textNeighbours(
  */
 export function cropRequestsFor(rows: BlockRow[]): CropRequest[] {
   const out: CropRequest[] = []
+  const { clusterOf } = figureLayout(rows)
+  const strips = new Set<FigureCluster<BlockRow>>(clusterOf.values())
+  for (const c of strips) {
+    const first = c.blocks[0]
+    out.push({ key: figureClusterKey(first.block_id), page: first.page, bbox: c.box, ...textNeighbours(rows, first.page, c.box) })
+  }
   for (const r of rows) {
     if ((r.kind === 'figure' || r.kind === 'table' || r.kind === 'equation') && r.bbox) {
       const bbox = JSON.parse(r.bbox) as [number, number, number, number]
-      out.push({ key: r.block_id, page: r.page, bbox, ...textNeighbours(rows, r.page, bbox) })
+      // 拼成一组的图块紧贴着：裁图时沿墨迹外扩会扩进隔壁，每块都带上邻居的一部分。这些块按框紧裁
+      out.push(clusterOf.has(r.block_id) ? { key: r.block_id, page: r.page, bbox, tight: true } : { key: r.block_id, page: r.page, bbox, ...textNeighbours(rows, r.page, bbox) })
     }
     for (const f of parseInlines(r.inlines)) {
       out.push({ key: inlineFigureKey(r.block_id, f.n), page: r.page, bbox: f.bbox, tight: true })

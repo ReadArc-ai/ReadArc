@@ -307,6 +307,7 @@ export function addHighlight(
     char_end: range[1],
     simhash: block.simhash,
     excerpt: selection.slice(0, 160),
+    ...(selection.length > 160 ? { quote: selection.slice(0, 4000) } : {}),
     ...(rects && rects.length > 0 ? { rects } : {})
   }
   let id = ''

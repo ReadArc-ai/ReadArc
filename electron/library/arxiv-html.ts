@@ -5,15 +5,21 @@
  * 只在这里联网：HTML 与图片下载后缓存在 userData/arxiv/，之后离线也能读。
  * 取不到（arXiv 没有生成 HTML 版）记一笔，七天内不再重试，免得每次打开都白等。
  */
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ArxivHtmlResult, BlockRow, PaperRow } from '../../shared/models'
 import { normalizeArxivId } from '../../shared/paper-meta'
 
 const MISSING_RETRY_MS = 7 * 24 * 3600 * 1000
 const FETCH_TIMEOUT_MS = 25_000
+/** 实测 8MB 的 SVG 在普通线路上要 30～50 秒 */
+const ASSET_TIMEOUT_MS = 120_000
 const MAX_HTML_BYTES = 30 * 1024 * 1024
-const MAX_ASSET_BYTES = 20 * 1024 * 1024
+const MAX_ASSET_BYTES = 40 * 1024 * 1024
+/** 同时下载几张图：一篇几十上百张图一起请求，arXiv 会回 429，慢网下也容易集体超时 */
+const ASSET_CONCURRENCY = 4
+/** 第一次失败后再试两次（等待毫秒）：网络抖动、限流多半等一下就好 */
+const ASSET_RETRY_MS = [1000, 3000]
 
 interface CacheMeta {
   id: string
@@ -24,6 +30,26 @@ interface CacheMeta {
 }
 
 export type Fetcher = (url: string, init?: RequestInit) => Promise<Response>
+
+/** 先写临时文件再改名：下载写到一半退出应用，也不会留下一个看着正常、其实解不开的半截文件 */
+function writeFileAtomic(path: string, data: string | Buffer): void {
+  const tmp = `${path}.tmp`
+  writeFileSync(tmp, data)
+  renameSync(tmp, path)
+}
+
+/**
+ * 图片是不是完整的：连接中途断开时有的情况不报错，只是字节不够。
+ * 半截文件进了缓存，这张图就永远是空白，所以下载和读缓存时都查一下文件尾
+ */
+export function imageComplete(bytes: Buffer, ext: string): boolean {
+  if (bytes.length === 0) return false
+  const tail = bytes.subarray(Math.max(0, bytes.length - 64))
+  if (ext === 'svg') return tail.includes('</svg')
+  if (ext === 'png') return tail.includes('IEND')
+  if (ext === 'jpg' || ext === 'jpeg') return tail.includes(Buffer.from([0xff, 0xd9]))
+  return true
+}
 
 /**
  * 论文的 arXiv 号：库里记的优先；没有就看首页的 arXiv 侧边水印（「arXiv:2608.24753v1 [cs.CL] …」），
@@ -44,17 +70,70 @@ export function detectArxivId(paper: Pick<PaperRow, 'arxiv_id'>, blocks: Pick<Bl
   return normalizeArxivId(paper.arxiv_id)
 }
 
+/** 侧边水印的写法（「arXiv:2608.24753v1 [cs.CL] 12 Aug 2026」）：是这篇自己的编号，不是脚注里的引用 */
+export function hasArxivStamp(blocks: Pick<BlockRow, 'page' | 'text'>[]): boolean {
+  return blocks.some((b) => b.page === 1 && /arXiv:\s*[\w./-]+\s*\[[\w.-]+\]/.test(b.text))
+}
+
+/** 首页上的 DOI（期刊论文一般印在页眉或脚注） */
+export function detectDoi(blocks: Pick<BlockRow, 'page' | 'text'>[]): string | null {
+  for (const b of blocks) {
+    if (b.page > 1) break
+    const m = /\b10\.\d{4,9}\/[^\s"<>,;]+/.exec(b.text)
+    if (m) return m[0].replace(/[.)\]]+$/, '')
+  }
+  return null
+}
+
 export class ArxivHtmlStore {
   /** 同一篇正在下载：后来的请求等同一次下载（导入后的预取和打开论文常常撞在一起） */
   private readonly inflight = new Map<string, Promise<ArxivHtmlResult>>()
   /** 同一个图片文件正在下载：并发的请求等同一次 */
   private readonly assetInflight = new Map<string, Promise<string | null>>()
+  private activeDownloads = 0
+  private readonly downloadQueue: (() => void)[] = []
 
   constructor(
     private readonly dir: string,
     private readonly fetcher: Fetcher = (url, init) => fetch(url, init),
-    private readonly now: () => number = Date.now
+    private readonly now: () => number = Date.now,
+    private readonly sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms))
   ) {}
+
+  private async withDownloadSlot<T>(job: () => Promise<T>): Promise<T> {
+    if (this.activeDownloads >= ASSET_CONCURRENCY) await new Promise<void>((r) => this.downloadQueue.push(r))
+    this.activeDownloads++
+    try {
+      return await job()
+    } finally {
+      this.activeDownloads--
+      this.downloadQueue.shift()?.()
+    }
+  }
+
+  /** 下载一张图：网络错误、超时、429、5xx 重试；404 这类重试也没用的直接放弃 */
+  private async downloadAsset(url: string, ext: string): Promise<Buffer | null> {
+    // arXiv 的 CDN 偶尔缓存着半截文件（Content-Length 也是半截的），重试多少次拿到的都一样：
+    // 发现不完整就带个查询参数绕开这份缓存，回源取完整的
+    let bypass = false
+    for (let attempt = 0; ; attempt++) {
+      let retryable = true
+      try {
+        const res = await this.fetcher(bypass ? `${url}?r=${attempt}` : url, { signal: AbortSignal.timeout(ASSET_TIMEOUT_MS) })
+        if (res.ok) {
+          const bytes = Buffer.from(await res.arrayBuffer())
+          if (imageComplete(bytes, ext)) return bytes
+          bypass = true
+        } else {
+          retryable = res.status === 429 || res.status >= 500
+        }
+      } catch {
+        // 连不上、超时：下面按重试处理
+      }
+      if (!retryable || attempt >= ASSET_RETRY_MS.length) return null
+      await this.sleep(ASSET_RETRY_MS[attempt])
+    }
+  }
 
   private metaPath(paperId: string): string {
     return join(this.dir, `${paperId}.json`)
@@ -117,7 +196,7 @@ export class ArxivHtmlStore {
       return { status: res.ok || res.status === 404 ? 'unavailable' : 'offline', arxivId }
     }
     mkdirSync(this.dir, { recursive: true })
-    writeFileSync(this.htmlPath(paperId), text)
+    writeFileAtomic(this.htmlPath(paperId), text)
     this.writeMeta(paperId, { id: arxivId, url: finalUrl, status: 'ok', fetchedAt: this.now() })
     return { status: 'ok', html: text, url: finalUrl, arxivId }
   }
@@ -151,20 +230,17 @@ export class ArxivHtmlStore {
     const mime = ext === 'svg' ? 'image/svg+xml' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext ? `image/${ext}` : null
     if (!mime) return null
     const file = join(this.assetDir(paperId), src.replace(/\//g, '__'))
+    // 以前的版本可能留下半截文件：不完整的当没缓存，重新下载
+    const cached = existsSync(file) ? readFileSync(file) : null
     let bytes: Buffer
-    if (existsSync(file)) {
-      bytes = readFileSync(file)
+    if (cached && imageComplete(cached, ext)) {
+      bytes = cached
     } else {
-      try {
-        const res = await this.fetcher(target.href, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
-        if (!res.ok) return null
-        bytes = Buffer.from(await res.arrayBuffer())
-      } catch {
-        return null
-      }
-      if (bytes.length > MAX_ASSET_BYTES) return null
+      const got = await this.withDownloadSlot(() => this.downloadAsset(target.href, ext))
+      if (!got || got.length > MAX_ASSET_BYTES) return null
+      bytes = got
       mkdirSync(this.assetDir(paperId), { recursive: true })
-      writeFileSync(file, bytes)
+      writeFileAtomic(file, bytes)
     }
     return `data:${mime};base64,${bytes.toString('base64')}`
   }

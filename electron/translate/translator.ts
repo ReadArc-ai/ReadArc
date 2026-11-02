@@ -771,7 +771,7 @@ function isTitleTranslation(src: string, out: string, lang: TargetLang): boolean
 
 /**
  * 论文库的标题译名：一批标题打包成一次调用（格式同目录标题「编号) 译文」）。
- * 返回 下标 → 译文；答成原文、别的语言或缺行的不返回，调用方记成「没有译名」，不反复再问
+ * 返回 下标 → 译文（空串 = 模型答了但不是译文）；模型漏掉的行不在表里
  */
 export async function translateTitles(
   deps: TranslateDeps,
@@ -798,7 +798,8 @@ export async function translateTitles(
     if (!m) continue
     const i = Number(m[1]) - 1
     const text = m[2].trim()
-    if (i >= 0 && i < titles.length && isTitleTranslation(titles[i], text, lang)) texts.set(i, text)
+    // 答了但不是译文（专名照抄）记成空串，不再反复问；模型漏掉的行不进表，下次再问
+    if (i >= 0 && i < titles.length) texts.set(i, isTitleTranslation(titles[i], text, lang) ? text : '')
   }
   return { texts, model: out.model, usage: { slug: out.attempt.slug, input: out.result.usage.inputTokens, output: out.result.usage.outputTokens } }
 }

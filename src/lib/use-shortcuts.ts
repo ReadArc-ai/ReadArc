@@ -18,7 +18,7 @@ function isTyping(target: EventTarget | null): boolean {
 
 
 /** Esc 能退出的层，从上到下。null = 没有可退的层（此时 Esc 不做任何事）。 */
-export type EscLayer = 'settings' | 'panel' | 'palette' | 'find' | null
+export type EscLayer = 'lightbox' | 'settings' | 'panel' | 'palette' | 'find' | null
 
 /**
  * 一次 Esc 只退一层，且**永不离开阅读器**。
@@ -33,7 +33,9 @@ export function escTarget(s: {
   panelOpen: boolean
   paletteOpen: boolean
   findOpen: boolean
+  lightbox?: unknown
 }): EscLayer {
+  if (s.lightbox) return 'lightbox'
   if (s.settingsOpen) return 'settings'
   if (s.tier === 'sm' && s.panelOpen) return 'panel'
   if (s.paletteOpen) return 'palette'
@@ -51,7 +53,8 @@ export function useShortcuts(resolvedDark: boolean): void {
       if (e.key === 'Escape' && !mod) {
         const layer = escTarget(s)
         if (layer === null) return
-        if (layer === 'settings') s.setSettingsOpen(false)
+        if (layer === 'lightbox') s.setLightbox(null)
+        else if (layer === 'settings') s.setSettingsOpen(false)
         else if (layer === 'panel') s.togglePanel()
         else if (layer === 'palette') s.setPaletteOpen(false)
         else s.setFindOpen(false)

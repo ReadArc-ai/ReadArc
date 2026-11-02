@@ -328,7 +328,8 @@ describe('translateTitles（论文库标题译名）', () => {
     const out = await translateTitles({ ctx, glossary: EMPTY_GLOSSARY, runner }, ['Attention Is All You Need', 'ReAct: Synergizing Reasoning and Acting in Language Models', 'Third'], 'zh')
     expect(calls).toHaveLength(1)
     expect(calls[0]).toContain('3) Third')
-    expect([...out.texts.entries()]).toEqual([[0, '注意力就是你所需要的一切']])
+    // 第 2 条照抄记成空串，第 3 条模型漏了不在表里（下次再问）
+    expect([...out.texts.entries()]).toEqual([[0, '注意力就是你所需要的一切'], [1, '']])
   })
 })
 

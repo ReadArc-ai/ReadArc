@@ -1,6 +1,6 @@
 /** 库服务：持有应用 DB 单例，聚合导入/打开/进度等主进程操作。 */
 import { uiText } from '../i18n'
-import { app } from 'electron'
+import { app, net } from 'electron'
 import { createHash } from 'node:crypto'
 import type Database from 'better-sqlite3'
 import { basename, join, sep } from 'node:path'
@@ -10,6 +10,7 @@ import {
   deletePaperData,
   enrichPaperMeta,
   allPaperRows,
+  markMetaLookup,
   findPaperByIds,
   getBlocks,
   getPaper,
@@ -28,13 +29,14 @@ import { blockId, sha1, simhash64 } from '../docengine/anchor'
 import { cachedTranslations, PROMPT_VERSION } from '../translate/translator'
 import { promptVersionFor, targetLang } from '../translate/target-lang'
 import { loadGlossary } from '../translate/glossary'
-import { ArxivHtmlStore, detectArxivId } from './arxiv-html'
-import { lookupPaperMeta } from './meta-lookup'
+import { ArxivHtmlStore, detectArxivId, detectDoi, hasArxivStamp } from './arxiv-html'
+import { loadSettings } from '../settings-store'
+import { findPaperMeta, lookupByTitle, sameTitle } from './meta-lookup'
 import { FIGURE_SCALE_MARK, LAYOUT_VERSION, LayoutPreempted, cropMark, cropMarkCurrent, cropRequestsFor, figureFileName, importPdf, pruneStaleFigures, refineLayout } from './import'
 import { fetchPublicDownload, isDownloadableUrl } from '../safe-url'
 import { cropRegions, releaseLayoutSession, retainLayoutSession, modelAvailable } from '../docengine/layout-ml'
 import type { SearchResult } from '../search/types'
-import type { LayoutProgressEvent } from '../../shared/models'
+import type { LayoutProgressEvent, PaperMetaLookup, PaperRow } from '../../shared/models'
 import type {
   ArxivHtmlResult,
   BlockRow,
@@ -304,7 +306,8 @@ export function deletePaper(paperId: string): boolean {
 let arxiv: ArxivHtmlStore | null = null
 /** arXiv 网页版缓存（userData/arxiv/）；用到时才建，app 就绪后才能取路径 */
 export function arxivStore(): ArxivHtmlStore {
-  if (!arxiv) arxiv = new ArxivHtmlStore(join(app.getPath('userData'), 'arxiv'))
+  // net.fetch 走 Chromium 网络栈，跟随系统代理：要开代理才连得上 arXiv 的用户不必另外设置
+  if (!arxiv) arxiv = new ArxivHtmlStore(join(app.getPath('userData'), 'arxiv'), (url, init) => net.fetch(url, init))
   return arxiv
 }
 
@@ -318,47 +321,68 @@ export function looksTruncatedTitle(title: string | null): boolean {
   return t.length > 0 && !/\s/.test(t)
 }
 
+/** 没查到的论文隔多久再试：这期间别的来源可能收录了它，但没必要每次启动都问 */
+const META_RETRY_MS = 30 * 24 * 3600 * 1000
+
+function metaIncomplete(p: PaperRow): boolean {
+  return !(p.authors && p.year && p.source) || looksTruncatedTitle(p.title)
+}
+
 /**
- * 本地导入的 arXiv 论文只有版面识别出的标题（小型大写会被拆成「REAC T」），作者、年份都是空的。
- * 首页水印能认出 arXiv 号的，从 arXiv 取一次权威的标题、作者、年份补上；用户手改过的论文不动。
- * 补上了返回 true（界面据此刷新论文库）
+ * 补全作者、年份、来源（版面识别只给得出标题，小型大写还会拆成「REAC T」）。用户手改过的论文不动。
+ * 依次用：arXiv 号（库里记的或首页水印）→ DOI → 标题（设置里可关）。
+ * 首页认出的编号可能是脚注里引用的别的论文，所以除水印外，查回来的标题要和这篇对得上才采用。
+ * 补上了返回 true（界面据此刷新论文库）；连不上时抛错，下次再试
  */
-export async function enrichFromArxiv(paperId: string): Promise<boolean> {
+export async function enrichPaperMetaAuto(paperId: string): Promise<boolean> {
   const paper = getPaper(appDb(), paperId)
-  if (!paper || paper.meta_edited) return false
-  const complete = !!(paper.authors && paper.year && paper.source)
-  if (complete && !looksTruncatedTitle(paper.title)) return false
-  const arxivId = detectArxivId(paper, firstPageText(paperId))
-  if (!arxivId) return false
-  const hit = await lookupPaperMeta({ arxiv_id: arxivId })
-  if (complete) {
-    // 信息齐全、只是标题被截短（OpenAlex 等来源只留了冒号前的名字）：arXiv 标题以它开头且更长才换
+  if (!paper || paper.meta_edited || !metaIncomplete(paper)) return false
+  const first = firstPageText(paperId)
+  const pageText = first.map((b) => b.text).join('\n')
+  const trusted = (hit: PaperMetaLookup | null, sure: boolean): PaperMetaLookup | null => (hit && (sure || sameTitle(hit.title, paper.title)) ? hit : null)
+
+  const arxivId = detectArxivId(paper, first)
+  let hit = arxivId ? trusted(await findPaperMeta({ arxiv_id: arxivId }), !!paper.arxiv_id || hasArxivStamp(first)) : null
+  const doi = paper.doi ?? detectDoi(first)
+  if (!hit && doi) hit = trusted(await findPaperMeta({ doi }), !!paper.doi)
+  if (!hit && paper.title && loadSettings().metaTitleLookup !== false) hit = await lookupByTitle(paper.title, pageText)
+  if (!hit) {
+    markMetaLookup(appDb(), paperId, Date.now())
+    return false
+  }
+
+  // 信息本来齐全、只是标题被截短（OpenAlex 等来源只留了冒号前的名字）：只换标题
+  if (paper.authors && paper.year && paper.source) {
     const short = (paper.title ?? '').trim().toLowerCase()
-    if (!hit.title || hit.title.length <= short.length || !hit.title.toLowerCase().startsWith(short)) return false
-    enrichPaperMeta(appDb(), paperId, { title: hit.title, arxiv_id: hit.arxiv_id ?? arxivId.replace(/v\d+$/, '') })
+    const full = hit.title ?? ''
+    if (full.length <= short.length || !full.toLowerCase().startsWith(short)) {
+      markMetaLookup(appDb(), paperId, Date.now())
+      return false
+    }
+    enrichPaperMeta(appDb(), paperId, { title: hit.title, arxiv_id: hit.arxiv_id })
     return true
   }
   enrichPaperMeta(appDb(), paperId, {
     title: hit.title,
     authors: hit.authors.length > 0 ? JSON.stringify(hit.authors) : null,
     year: hit.year,
-    source: hit.source ?? 'arXiv',
+    source: hit.source ?? (arxivId ? 'arXiv' : null),
     doi: hit.doi,
-    arxiv_id: hit.arxiv_id ?? arxivId.replace(/v\d+$/, '')
+    arxiv_id: hit.arxiv_id ?? arxivId?.replace(/v\d+$/, '') ?? null
   })
   return true
 }
 
 /**
- * 启动后在后台给库里缺信息的 arXiv 论文补一遍。逐篇来，每篇间隔 3 秒（arXiv API 的频率建议）；
+ * 启动后在后台给库里缺信息的论文补一遍。逐篇来，每篇间隔 3 秒（公开接口的频率建议）；
  * 连不上就停，下次启动再补
  */
-export async function backfillArxivMeta(onUpdated: () => void, gapMs = 3000): Promise<void> {
+export async function backfillPaperMeta(onUpdated: () => void, gapMs = 3000): Promise<void> {
   for (const p of allPaperRows(appDb())) {
-    if (p.meta_edited || (p.authors && p.year && p.source && !looksTruncatedTitle(p.title))) continue
+    if (p.meta_edited || !metaIncomplete(p)) continue
+    if (p.meta_lookup_at && Date.now() - p.meta_lookup_at < META_RETRY_MS) continue
     try {
-      if (await enrichFromArxiv(p.id)) onUpdated()
-      else continue
+      if (await enrichPaperMetaAuto(p.id)) onUpdated()
     } catch {
       return
     }

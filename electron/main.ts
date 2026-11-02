@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { IPC, type PersistedSettings } from '../shared/ipc'
 import { flushSettings, loadSettings, patchSettings } from './settings-store'
 import { isSafeExternalUrl } from './safe-url'
-import { backfillArxivMeta, resumePendingLayouts, setLayoutNotifier, sweepOrphanCopies, sweepStaleFigures } from './library/service'
+import { backfillPaperMeta, resumePendingLayouts, setLayoutNotifier, sweepOrphanCopies, sweepStaleFigures } from './library/service'
 import { absorbAskRouteIntoMain } from './config/main-model'
 import { translateLibraryTitles } from './translate/service'
 import { registerAllIpc } from './ipc'
@@ -342,7 +342,7 @@ app.whenReady().then(() => {
   } catch (err) {
     logStartup(`resumePendingLayouts skipped: ${describeError(err)}`)
   }
-  // 库里缺作者等信息的 arXiv 论文：启动稍后在后台补全（不抢启动时的网络和磁盘）；
+  // 库里缺作者等信息的论文：启动稍后在后台补全（不抢启动时的网络和磁盘）；
   // 标题译名也提前补上，打开论文库时就已经是中文标题。补全改了标题的，再补一次译名
   const libraryChanged = (): void => {
     for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(IPC.libraryChanged)
@@ -355,7 +355,7 @@ app.whenReady().then(() => {
       .catch(() => {})
   setTimeout(() => void translateTitles(), 3000)
   setTimeout(() => {
-    void backfillArxivMeta(libraryChanged)
+    void backfillPaperMeta(libraryChanged)
       .catch(() => {})
       .then(translateTitles)
   }, 8000)

@@ -106,6 +106,10 @@ export function enrichPaperMeta(
   ).run({ title: null, authors: null, year: null, source: null, doi: null, arxiv_id: null, ...meta, id })
 }
 
+export function markMetaLookup(db: Database.Database, id: string, at: number): void {
+  db.prepare('UPDATE papers SET meta_lookup_at = ? WHERE id = ?').run(at, id)
+}
+
 /** 用户在编辑框里改的论文信息（已由 sanitizeMetaPatch 校验）。整体覆盖，并标记为手改：自动流程此后不再覆盖 */
 export function updatePaperMeta(db: Database.Database, id: string, meta: PaperMetaPatch): boolean {
   return db.transaction(() => {

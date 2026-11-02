@@ -6,6 +6,7 @@ import { useT } from '../../i18n'
 import { ReaderToolbar } from './Toolbar'
 import { FindBar } from './FindBar'
 import { SelectionPopover } from './SelectionPopover'
+import { ImageLightbox } from './ImageLightbox'
 import { ReaderOutline } from './Outline'
 import { HighlightUndo } from './HighlightUndo'
 import { ReaderDocument } from './Document'
@@ -118,6 +119,7 @@ export function ReaderScreen(): JSX.Element {
         )}
       </div>
       <SelectionPopover containerRef={scrollRef} />
+      <ImageLightbox />
     </section>
   )
 }

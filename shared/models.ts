@@ -8,6 +8,8 @@ export interface PaperRow {
   title_zh: string | null
   /** 标题按当前目标语言的自动译名（论文库显示用）；没有或与目标语言相同为 null */
   title_tr?: string | null
+  /** 自动补全论文信息上次查询但没查到的时间 */
+  meta_lookup_at?: number | null
   authors: string | null
   year: number | null
   source: string | null
@@ -383,6 +385,8 @@ export interface NoteAnchorView {
   char_end: number
   simhash: string
   excerpt: string
+  /** 选区超过摘录上限时的完整文字 */
+  quote?: string
   /** 高亮选区矩形（PDF 坐标 [page, x, y, w, h]，y 向上） */
   rects?: [number, number, number, number, number][]
 }

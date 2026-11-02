@@ -211,7 +211,8 @@ async function runLibraryTitles(): Promise<number> {
       const out = await translateTitles(deps, batch.map((r) => r.title), lang)
       recordUsage(db, 'translate', out.usage.slug, out.model, out.usage.input, out.usage.output)
       batch.forEach((r, k) => {
-        const text = out.texts.get(k) ?? ''
+        const text = out.texts.get(k)
+        if (text === undefined) return
         saveTitleTranslation(db, r.id, lang, r.title, text, out.model)
         if (text) changed++
       })

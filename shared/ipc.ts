@@ -82,6 +82,8 @@ export interface PersistedSettings {
   summaryCollapsed?: boolean
   /** 双击单词弹内置词典释义（不花 token）；缺省开 */
   wordLookup?: boolean
+  /** 论文没有编号时，按标题在 OpenAlex 查作者和年份（默认开） */
+  metaTitleLookup?: boolean
   /** 对话时要求模型先思考再回答（Claude / OpenAI o 系列默认不思考）；缺省关 */
   chatReasoning?: boolean
 }

@@ -162,6 +162,112 @@
   margin: 0.2em 0;
 }
 
+.flow-zoomable,
+.flow-ltx--figure img,
+.flow-ltx--figure figure svg {
+  cursor: zoom-in;
+}
+
+/* arXiv 图片没加载出来：不留空白，给一个能重试的提示 */
+.flow-ltx img.flow-img-failed {
+  display: none;
+}
+
+.flow-img-retry {
+  display: block;
+  width: 100%;
+  margin: 0.4em 0;
+  padding: 1.6em 1em;
+  font-size: 0.86em;
+  color: #6e6e73;
+  background: #f5f5f7;
+  border: 1px dashed #c7c7cc;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.flow-img-retry:hover:not(:disabled) {
+  color: #1d1d1f;
+  border-color: #8e8e93;
+}
+
+body .reader-doc--paper-dark .flow-img-retry {
+  color: #9a9aa0;
+  background: #2c2c2e;
+  border-color: #48484a;
+}
+
+/* 流式视图的高亮（CSS Custom Highlight API，不改 DOM） */
+::highlight(readarc-flow) {
+  background-color: rgba(255, 200, 40, 0.42);
+}
+
+/* ---- 图片放大 ---- */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.82);
+  animation: pop-in 0.12s ease;
+  touch-action: none;
+}
+
+.lightbox-stage {
+  position: relative;
+  flex: none;
+  background: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+  transform-origin: center;
+  user-select: none;
+}
+
+.lightbox-stage img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.lightbox-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: rgba(30, 30, 32, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+}
+
+.lightbox-bar button {
+  min-width: 32px;
+  height: 28px;
+  padding: 0 8px;
+  color: #f2f2f7;
+  font-size: 16px;
+  line-height: 1;
+  border-radius: 6px;
+}
+
+.lightbox-bar button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.lightbox-bar .lightbox-pct {
+  min-width: 56px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
 /* ---- 纸面深色 ---- */
 body .reader-doc--paper-dark .flow-doc {
   background: #1c1c1e;

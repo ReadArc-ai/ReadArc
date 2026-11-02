@@ -21,6 +21,8 @@ export interface NoteAnchorMeta {
   simhash: string
   /** 原文摘录，供解析器升级后 simhash 重定位兜底 */
   excerpt: string
+  /** 高亮专用：选区超过摘录上限时的完整文字，流式视图据此定位 */
+  quote?: string
   /** 高亮专用：选区矩形（PDF 坐标 [page, x, y, w, h]，y 向上），原版页据此绘制 */
   rects?: [number, number, number, number, number][]
 }

@@ -181,4 +181,8 @@ export const MIGRATIONS: string[] = [
     PRIMARY KEY (paper_id, lang)
   );
   `,
+  // 自动补全论文信息查过一次、没查到的时间：一个月内启动时不再重复联网
+  `
+  ALTER TABLE papers ADD COLUMN meta_lookup_at INTEGER;
+  `,
 ]

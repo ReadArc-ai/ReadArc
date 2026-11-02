@@ -12,13 +12,14 @@ import { createPortal } from 'react-dom'
 import { useShallow } from 'zustand/react/shallow'
 import type { BlockRow } from '../../../shared/models'
 import { parseInlines, placeholdersMatch, repairPlaceholders } from '../../../shared/inline-formula'
-import { CAPTION_RE, continuationChains, isReferenceBlock } from '../../../shared/paper-flow'
+import { CAPTION_RE, continuationChains, figureClusterKey, figureLayout, isReferenceBlock, type FigureCluster } from '../../../shared/paper-flow'
 import { useApp } from '../../store/app'
 import { usePaper } from '../../store/paper'
 import { useFigureSrc } from '../../lib/use-figure'
 import { useT } from '../../i18n'
 import { renderInline, parseBbox, type InlineCtx } from './page-text'
 import { ArxivFlow, useArxivSource, type ArxivState } from './ArxivFlow'
+import { useFlowHighlights } from './flow-highlights'
 
 export type FlowMode = 'both' | 'zh'
 
@@ -27,7 +28,7 @@ type FlowRole = 'body' | 'small' | 'caption' | 'ref' | 'line'
 type FlowItem =
   | { type: 'heading'; block: BlockRow }
   | { type: 'para'; parts: BlockRow[]; role: FlowRole }
-  | { type: 'figures'; blocks: BlockRow[] }
+  | { type: 'figures'; clusters: FigureCluster<BlockRow>[] }
 
 /** 正文字号（pt）：段落字号的中位数。图、公式按它换算成和正文同一比例 */
 function bodyFontPt(blocks: BlockRow[]): number {
@@ -54,9 +55,10 @@ function buildItems(blocks: BlockRow[], bodyPt: number): FlowItem[] {
   const chains = continuationChains(blocks)
   const tails = new Set<string>()
   for (const parts of chains.values()) for (const p of parts.slice(1)) tails.add(p.block_id)
+  const { clusterOf, duplicates } = figureLayout(blocks)
   const items: FlowItem[] = []
   for (const b of blocks) {
-    if (b.kind === 'margin' || tails.has(b.block_id)) continue
+    if (b.kind === 'margin' || tails.has(b.block_id) || duplicates.has(b.block_id)) continue
     if (b.kind === 'heading') {
       items.push({ type: 'heading', block: b })
     } else if (b.kind === 'para') {
@@ -70,12 +72,15 @@ function buildItems(blocks: BlockRow[], bodyPt: number): FlowItem[] {
       const parts = chains.get(b.block_id) ?? [b]
       items.push({ type: 'para', parts, role: role === 'body' && parts.length === 1 && isShortLine(b, bodyPt) ? 'line' : role })
     } else {
-      // 图、表、独立公式：同一页连续的子图并成一行
+      // 图、表、独立公式：切开的长图算一张，同一页连续的子图并成一行
+      const strip = clusterOf.get(b.block_id)
+      if (strip && strip.blocks[0] !== b) continue
+      const cluster: FigureCluster<BlockRow> = strip ?? { blocks: [b], box: parseBbox(b) ?? [0, 0, 0, 0] }
       const last = items[items.length - 1]
-      if (b.kind === 'figure' && last?.type === 'figures' && last.blocks[0].kind === 'figure' && last.blocks[0].page === b.page) {
-        last.blocks.push(b)
+      if (b.kind === 'figure' && last?.type === 'figures' && last.clusters[0].blocks[0].kind === 'figure' && last.clusters[0].blocks[0].page === b.page) {
+        last.clusters.push(cluster)
       } else {
-        items.push({ type: 'figures', blocks: [b] })
+        items.push({ type: 'figures', clusters: [cluster] })
       }
     }
   }
@@ -83,7 +88,7 @@ function buildItems(blocks: BlockRow[], bodyPt: number): FlowItem[] {
 }
 
 function firstBlock(item: FlowItem): BlockRow {
-  return item.type === 'heading' ? item.block : item.type === 'para' ? item.parts[0] : item.blocks[0]
+  return item.type === 'heading' ? item.block : item.type === 'para' ? item.parts[0] : item.clusters[0].blocks[0]
 }
 
 function inlineCtx(b: BlockRow): InlineCtx | undefined {
@@ -110,34 +115,43 @@ function renderParts(parts: BlockRow[], texts: string[], cjk: boolean): (string 
   return out
 }
 
-/** 图、表、独立公式：按原版尺寸换算成正文比例；没进视口不取图，占位尺寸先按原版定好，滚动位置不跳 */
-function FlowFigure({ block, pxPerPt }: { block: BlockRow; pxPerPt: number }): JSX.Element {
-  const box = parseBbox(block)
+/**
+ * 图、表、独立公式：按原版尺寸换算成正文比例；没进视口不取图，占位尺寸先按原版定好，滚动位置不跳。
+ * 版面模型切开的长图用整组外接框裁的那张截图，不一块块排。点一下放大
+ */
+function FlowFigure({ cluster, pxPerPt }: { cluster: FigureCluster<BlockRow>; pxPerPt: number }): JSX.Element {
   const ref = useRef<HTMLDivElement | null>(null)
   const [near, setNear] = useState(false)
   useEffect(() => {
     const el = ref.current
     if (!el || near) return
-    const io = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && setNear(true), { rootMargin: '1200px' })
+    const io = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && setNear(true), { root: el.closest('.reader-doc'), rootMargin: '1200px' })
     io.observe(el)
     return () => io.disconnect()
   }, [near])
-  const w = box ? box[2] * pxPerPt : 320
-  const h = box ? box[3] * pxPerPt : 200
+  const head = cluster.blocks[0]
+  const w = cluster.box[2] > 0 ? cluster.box[2] * pxPerPt : 320
+  const h = cluster.box[3] > 0 ? cluster.box[3] * pxPerPt : 200
+  const zoomable = head.kind !== 'equation'
+  const zoom = (e: React.MouseEvent<HTMLDivElement>): void => {
+    const img = e.currentTarget.querySelector('img')
+    if (img?.naturalWidth) useApp.getState().setLightbox({ src: img.src, width: img.naturalWidth, height: img.naturalHeight })
+  }
   return (
     <div
       ref={ref}
-      className={`flow-fig flow-fig--${block.kind}`}
-      data-order={block.block_order}
+      className={`flow-fig flow-fig--${head.kind}${zoomable ? ' flow-zoomable' : ''}`}
+      data-order={head.block_order}
       style={{ width: `${w.toFixed(1)}px`, aspectRatio: `${w.toFixed(1)} / ${h.toFixed(1)}` }}
+      onClick={zoomable ? zoom : undefined}
     >
-      {near && <FigureImage block={block} />}
+      {near && <FigureImage paperId={head.paper_id} figureKey={cluster.blocks.length > 1 ? figureClusterKey(head.block_id) : head.block_id} />}
     </div>
   )
 }
 
-function FigureImage({ block }: { block: BlockRow }): JSX.Element | null {
-  const src = useFigureSrc(block.paper_id, block.block_id)
+function FigureImage({ paperId, figureKey }: { paperId: string; figureKey: string }): JSX.Element | null {
+  const src = useFigureSrc(paperId, figureKey)
   return src ? <img src={src} alt="" draggable={false} /> : null
 }
 
@@ -156,7 +170,7 @@ function FlowParagraph({ parts, role, mode }: { parts: BlockRow[]; role: FlowRol
     : null
   const showOriginal = mode === 'both' || !translated
   return (
-    <div className={`flow-block flow-para flow-para--${role}`} data-order={head.block_order} data-page={head.page}>
+    <div className={`flow-block flow-para flow-para--${role}`} data-order={head.block_order} data-orders={parts.map((p) => p.block_order).join(' ')} data-page={head.page}>
       {showOriginal && <p className={translated || mode === 'both' ? 'flow-orig' : 'flow-orig flow-orig--alone'}>{original}</p>}
       {translation && <p className="flow-trans">{translation}</p>}
       {pending && <p className="flow-trans flow-trans--pending" aria-hidden />}
@@ -194,7 +208,7 @@ function FlowPage({ page, items, mode, pxPerPt, estimate }: { page: number; item
   useEffect(() => {
     const el = ref.current
     if (!el || mounted) return
-    const io = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && setMounted(true), { rootMargin: '1600px' })
+    const io = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && setMounted(true), { root: el.closest('.reader-doc'), rootMargin: '1600px' })
     io.observe(el)
     return () => io.disconnect()
   }, [mounted])
@@ -207,8 +221,8 @@ function FlowPage({ page, items, mode, pxPerPt, estimate }: { page: number; item
           if (item.type === 'para') return <FlowParagraph key={b.block_id} parts={item.parts} role={item.role} mode={mode} />
           return (
             <div key={b.block_id} className="flow-figs">
-              {item.blocks.map((fb) => (
-                <FlowFigure key={fb.block_id} block={fb} pxPerPt={pxPerPt} />
+              {item.clusters.map((cluster) => (
+                <FlowFigure key={cluster.blocks[0].block_id} cluster={cluster} pxPerPt={pxPerPt} />
               ))}
             </div>
           )
@@ -260,6 +274,8 @@ export function FlowView({ mode }: { mode: FlowMode }): JSX.Element | null {
   const t = useT()
   const [retry, setRetry] = useState(0)
   const arxiv = useArxivSource(bundle?.paper.id ?? '', retry)
+  const docRef = useRef<HTMLDivElement | null>(null)
+  useFlowHighlights(docRef, bundle?.paper.id, bundle?.blocks)
   const useHtml = flowSource === 'arxiv' && arxiv.status === 'ready'
   const blocks = bundle?.blocks
   const bodyPt = useMemo(() => bodyFontPt(blocks ?? []), [blocks])
@@ -280,14 +296,14 @@ export function FlowView({ mode }: { mode: FlowMode }): JSX.Element | null {
   const pxPerPt = fontPx / bodyPt
   const estimate = (items: FlowItem[]): number =>
     items.reduce((h, item) => {
-      if (item.type === 'figures') return h + item.blocks.reduce((m, b) => Math.max(m, (parseBbox(b)?.[3] ?? 120) * pxPerPt), 0) + 24
+      if (item.type === 'figures') return h + item.clusters.reduce((m, c) => Math.max(m, (c.box[3] || 120) * pxPerPt), 0) + 24
       const chars = item.type === 'heading' ? item.block.text.length : item.parts.reduce((n, p) => n + p.text.length, 0)
       return h + Math.ceil(chars / 80) * fontPx * 1.7 * (mode === 'both' ? 2 : 1) + 16
     }, 0)
   return (
     <>
     {sourceSlot && createPortal(toggle, sourceSlot)}
-    <div className={`flow-doc flow-doc--${mode}`} style={{ fontSize: `${fontPx}px`, ['--flow-zh-scale' as string]: String(zhScale) }} aria-label={t('reader.view.bilingual')}>
+    <div ref={docRef} className={`flow-doc flow-doc--${mode}`} style={{ fontSize: `${fontPx}px`, ['--flow-zh-scale' as string]: String(zhScale) }} aria-label={t('reader.view.bilingual')}>
       {useHtml && arxiv.status === 'ready' ? (
         <ArxivFlow units={arxiv.units} mode={mode} paperId={bundle.paper.id} blocks={bundle.blocks} />
       ) : (

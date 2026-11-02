@@ -177,6 +177,10 @@ function selectionRectsInPage(
   })
 }
 
+function compactText(s: string): string {
+  return s.replace(/\s+/g, '')
+}
+
 type TransState =
   | { status: 'loading'; text: string }
   | { status: 'ok'; text: string }
@@ -241,8 +245,17 @@ export function SelectionPopover({
         } else if (tpBlock && containerRef.current?.contains(tpBlock)) {
           // 镜像译文页：块元素自带 data-order；矩形同样采集（tp-page 与原版页同坐标系）
           const order = Number(tpBlock.dataset.order)
+          const allBlocks = usePaper.getState().bundle?.blocks ?? []
+          // arXiv 网页版的单元和 PDF 块只是近似对应：选中的文字不在这块里就按文字找真正的那块，
+          // 否则锚点落到邻块上，回到原版页时高亮的是别的段落
+          const unitId = tpBlock.dataset.unit
+          const near = allBlocks.find((b) => b.block_order === order)
+          const key = compactText(text)
           blockId =
-            usePaper.getState().bundle?.blocks.find((b) => b.block_order === order)?.block_id ??
+            (unitId && near && !compactText(near.text).includes(key)
+              ? allBlocks.find((b) => compactText(b.text).includes(key))?.block_id
+              : undefined) ??
+            near?.block_id ??
             null
           // 不采集镜像几何矩形：译文版面位置画到英文页上必然错位，
           // 左页矩形改由字符区间在渲染时从文本层推导
@@ -250,7 +263,7 @@ export function SelectionPopover({
           // 再按字符占比反投影回原文区间，随锚点落盘
           if (blockId) {
             const st = usePaper.getState()
-            const zh = st.translations[blockId]?.text
+            const zh = st.translations[unitId ?? blockId]?.text
             const srcLen = st.bundle?.blocks.find((b) => b.block_id === blockId)?.text.length ?? 0
             if (zh && srcLen > 0) {
               const idx = zh.indexOf(text)

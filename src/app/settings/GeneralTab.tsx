@@ -15,6 +15,8 @@ export function GeneralTab(): JSX.Element {
   const theme = useApp((s) => s.theme)
   const setTheme = useApp((s) => s.setTheme)
   const wordLookup = useApp((s) => s.wordLookup)
+  const metaTitleLookup = useApp((s) => s.metaTitleLookup)
+  const setMetaTitleLookup = useApp((s) => s.setMetaTitleLookup)
   const setWordLookup = useApp((s) => s.setWordLookup)
   const setLang = (next: Lang): void => {
     useApp.setState({ lang: next })
@@ -65,6 +67,21 @@ export function GeneralTab(): JSX.Element {
             aria-checked={wordLookup}
             aria-label={t('set.word-lookup')}
             onClick={() => setWordLookup(!wordLookup)}
+          >
+            <span className="set-switch-thumb" />
+          </button>
+        }
+      />
+      <Row
+        title={t('set.meta-title-lookup')}
+        desc={t('set.meta-title-lookup.desc')}
+        action={
+          <button
+            className={metaTitleLookup ? 'set-switch set-switch--on' : 'set-switch'}
+            role="switch"
+            aria-checked={metaTitleLookup}
+            aria-label={t('set.meta-title-lookup')}
+            onClick={() => setMetaTitleLookup(!metaTitleLookup)}
           >
             <span className="set-switch-thumb" />
           </button>

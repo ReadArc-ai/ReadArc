@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BlockRow } from './models'
-import { continuationChains, isReferencesSection, skipBlockTranslation } from './paper-flow'
+import { clusterFigures, containedFigures, continuationChains, figureLayout, isReferencesSection, skipBlockTranslation } from './paper-flow'
 
 let order = 0
 function block(page: number, text: string, over: Partial<BlockRow> = {}): BlockRow {
@@ -86,5 +86,51 @@ describe('跨页 / 跨栏续段', () => {
       [block(1, `${LONG_HEAD} the remaining`, { section: 'References' }), block(2, 'attributes during traversal.', { section: 'References' })]
     ]
     for (const c of cases) expect(continuationChains(c).size, c.map((b) => b.text).join(' | ')).toBe(0)
+  })
+})
+
+describe('图块归并', () => {
+  type F = { id: string; box: [number, number, number, number] }
+  const boxOf = (f: F): F['box'] => f.box
+  const ids = (c: { blocks: F[] }): string[] => c.blocks.map((f) => f.id)
+
+  it('一张长图被切成一排：归成一组，外接框是整张图', () => {
+    const row: F[] = [70, 147, 223, 299, 378, 450].map((x, i) => ({ id: `p${i}`, box: [x, 701, 76, 71] }))
+    const [only, ...rest] = clusterFigures(row, boxOf)
+    expect(rest).toHaveLength(0)
+    expect(only.blocks).toHaveLength(6)
+    expect(only.box).toEqual([70, 701, 456, 71])
+  })
+
+  it('离得远的两张图不并；上下贴着的并', () => {
+    const a: F = { id: 'a', box: [70, 600, 200, 100] }
+    const below: F = { id: 'b', box: [70, 490, 200, 100] }
+    const far: F = { id: 'c', box: [70, 100, 200, 100] }
+    const out = clusterFigures([a, below, far], boxOf)
+    expect(out.map(ids)).toEqual([['a', 'b'], ['c']])
+  })
+
+  it('占不满外接框的不并：外接框里可能框进别的内容', () => {
+    const left: F = { id: 'l', box: [70, 600, 200, 100] }
+    const right: F = { id: 'r', box: [290, 550, 200, 100] }
+    expect(clusterFigures([left, right], boxOf).map(ids)).toEqual([['l'], ['r']])
+  })
+
+  it('全文归并：连续的碎块成组，隔着正文的不算，整图里的碎块标成重复', () => {
+    const fig = (id: string, page: number, x: number, w = 76): { block_id: string; kind: BlockRow['kind']; page: number; bbox: string } => ({ block_id: id, kind: 'figure', page, bbox: JSON.stringify([x, 700, w, 70]) })
+    const para = { block_id: 'p', kind: 'para' as const, page: 1, bbox: JSON.stringify([70, 500, 400, 100]) }
+    const margin = { block_id: 'm', kind: 'margin' as const, page: 1, bbox: JSON.stringify([10, 10, 10, 10]) }
+    const { clusterOf, duplicates } = figureLayout([fig('a', 1, 70), margin, fig('b', 1, 147), para, fig('c', 1, 224), fig('whole', 2, 70, 450), fig('piece', 2, 180, 100)])
+    expect(clusterOf.get('a')?.blocks.map((b) => b.block_id)).toEqual(['a', 'b'])
+    expect(clusterOf.has('c')).toBe(false)
+    expect([...duplicates]).toEqual(['piece'])
+    expect(clusterOf.has('whole')).toBe(false)
+  })
+
+  it('整图和它的碎块同时框出来时丢掉碎块，部分重叠的不丢', () => {
+    const whole: F = { id: 'whole', box: [73, 695, 450, 76] }
+    const piece: F = { id: 'piece', box: [186, 695, 110, 76] }
+    const beside: F = { id: 'beside', box: [400, 650, 200, 100] }
+    expect([...containedFigures([whole, piece, beside], boxOf)].map((f) => f.id)).toEqual(['piece'])
   })
 })

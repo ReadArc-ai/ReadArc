@@ -1,6 +1,6 @@
 # ReadArc 隐私政策
 
-更新日期：2026-10-15
+更新日期：2026-11-02
 
 本政策适用于 ReadArc 桌面应用的源码构建版和 Mac App Store 版。ReadArc 是本地优先的论文阅读工具，没有自建账号、云同步、广告、遥测或模型请求中转服务。模型供应商由你选择，使用云端 AI 时，任务所需内容会发送到你配置的端点。
 
@@ -21,7 +21,8 @@
 | 搜索论文 | arXiv、Semantic Scholar、OpenAlex；需要将中文查询改写为英文时还会调用所选模型 | 搜索词或改写后的关键词 |
 | 从搜索结果导入论文 | 搜索结果对应的论文来源网站 | PDF 下载请求 |
 | arXiv 论文的网页版与论文信息 | arXiv（arxiv.org） | 论文的 arXiv 编号（读自 PDF 首页的 arXiv 标记），用于下载该论文的官方网页版及其中的图片，并补全论文库里的标题、作者和年份；不发送论文内容。下载后缓存在本机，之后离线可读。双语、译文视图可在工具栏改用「PDF」 |
-| 编辑论文信息时「按编号补全」 | Semantic Scholar 或 arXiv | 你填写的 DOI 或 arXiv 编号 |
+| 自动补全论文信息 | arXiv、Semantic Scholar、OpenAlex | 导入后和启动时，为缺作者、年份的论文发送 PDF 首页上的 arXiv 编号或 DOI；都没有时把论文标题发给 OpenAlex（可在设置 → 通用里关闭）。不发送论文内容 |
+| 编辑论文信息时「按编号补全」 | Semantic Scholar、OpenAlex 或 arXiv | 你填写的 DOI 或 arXiv 编号 |
 | 获取模型列表、检测本地模型 | 配置的供应商端点，或本机 Ollama / LM Studio 地址 | 模型列表请求；供应商要求时包含 API Key 用于认证 |
 | 测试代理连接 | 配置的代理及 Google 的 `www.gstatic.com/generate_204` | 连通性测试请求，不附带论文内容或模型 API Key |
 | 打开项目、支持或供应商链接 | 系统浏览器中打开的网站 | 浏览器的正常网页请求 |
